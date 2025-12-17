@@ -1,0 +1,170 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// NextAuth.js Models
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  password      String? // For email/password auth
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts      Account[]
+  ratings       Rating[]
+  comments      Comment[]
+  helpfulVotes  HelpfulVote[]
+  tagVotes      TagVote[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  @@map("sessions")
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+  @@map("verification_tokens")
+}
+
+// Application Models
+model Neighborhood {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  boundary    Json // GeoJSON geometry
+  metadata    Json? // Additional info (description, etc.)
+  avgRating   Float    @default(0)
+  ratingCount Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  ratings  Rating[]
+  comments Comment[]
+  tags     Tag[]
+
+  @@index([slug])
+  @@map("neighborhoods")
+}
+
+model Rating {
+  id              String   @id @default(cuid())
+  neighborhoodId  String
+  userId          String
+  rating          Int // 1-5 stars
+  categories      Json // { safety: 4, vibe: 5, transit: 3, food: 5, nightlife: 4, value: 3 }
+  createdAt       DateTime @default(now())
+
+  neighborhood Neighborhood @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, neighborhoodId]) // One rating per user per neighborhood
+  @@index([neighborhoodId])
+  @@index([userId])
+  @@map("ratings")
+}
+
+model Comment {
+  id               String   @id @default(cuid())
+  neighborhoodId   String
+  userId           String
+  content          String
+  helpfulVotes     Int      @default(0)
+  notHelpfulVotes  Int      @default(0)
+  photoUrls        String[] // Array of photo URLs
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  neighborhood Neighborhood  @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  votes        HelpfulVote[]
+
+  @@index([neighborhoodId])
+  @@index([userId])
+  @@index([createdAt])
+  @@map("comments")
+}
+
+model HelpfulVote {
+  id         String   @id @default(cuid())
+  commentId  String
+  userId     String
+  isHelpful  Boolean // true = helpful, false = not helpful
+  createdAt  DateTime @default(now())
+
+  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, commentId]) // One vote per user per comment
+  @@index([commentId])
+  @@map("helpful_votes")
+}
+
+model Tag {
+  id             String   @id @default(cuid())
+  neighborhoodId String
+  name           String
+  upvoteCount    Int      @default(0)
+  createdAt      DateTime @default(now())
+
+  neighborhood Neighborhood @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
+  votes        TagVote[]
+
+  @@unique([neighborhoodId, name]) // Unique tag per neighborhood
+  @@index([neighborhoodId])
+  @@map("tags")
+}
+
+model TagVote {
+  id        String   @id @default(cuid())
+  tagId     String
+  userId    String
+  createdAt DateTime @default(now())
+
+  tag  Tag  @relation(fields: [tagId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, tagId]) // One vote per user per tag
+  @@index([tagId])
+  @@map("tag_votes")
+}
