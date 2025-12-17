@@ -34,9 +34,7 @@ export default function RootLayout({
         <ErrorBoundary>
           <SessionProvider>
             <Navbar />
-            <main className="pt-16">
-              {children}
-            </main>
+            {children}
           </SessionProvider>
         </ErrorBoundary>
       </body>
