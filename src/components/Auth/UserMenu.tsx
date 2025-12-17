@@ -22,31 +22,133 @@ export default function UserMenu() {
   if (!session?.user) return null;
 
   return (
-    <div className="relative" ref={menuRef}>
+    <div style={{ position: 'relative' }} ref={menuRef}>
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex items-center gap-2 px-4 py-2 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+        style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: '10px',
+          padding: '8px 16px',
+          background: 'rgba(255, 255, 255, 0.9)',
+          border: '1px solid rgba(0, 0, 0, 0.08)',
+          borderRadius: '12px',
+          cursor: 'pointer',
+          transition: 'all 0.2s',
+          boxShadow: '0 2px 8px rgba(0, 0, 0, 0.04)',
+        }}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = 'rgba(255, 255, 255, 1)';
+          e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.08)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.9)';
+          e.currentTarget.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.04)';
+        }}
       >
-        <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-white font-medium">
+        <div style={{
+          width: '32px',
+          height: '32px',
+          background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
+          borderRadius: '10px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          color: 'white',
+          fontWeight: 600,
+          fontSize: '14px',
+          boxShadow: '0 2px 8px rgba(59, 130, 246, 0.3)',
+        }}>
           {session.user.name?.[0]?.toUpperCase() || 'U'}
         </div>
-        <span className="font-medium">{session.user.name}</span>
+        <span style={{ 
+          fontWeight: 600, 
+          color: '#111827',
+          fontSize: '14px',
+        }}>
+          {session.user.name}
+        </span>
       </button>
 
       {isOpen && (
-        <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
-          <div className="px-4 py-2 border-b border-gray-200">
-            <p className="text-sm font-medium text-gray-900">{session.user.name}</p>
-            <p className="text-xs text-gray-500 truncate">{session.user.email}</p>
+        <div style={{
+          position: 'absolute',
+          right: 0,
+          marginTop: '8px',
+          width: '240px',
+          background: 'rgba(255, 255, 255, 0.98)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          borderRadius: '16px',
+          boxShadow: '0 20px 40px rgba(0, 0, 0, 0.15)',
+          border: '1px solid rgba(0, 0, 0, 0.05)',
+          padding: '8px',
+          zIndex: 50,
+          animation: 'slideDown 0.2s ease-out',
+        }}>
+          <div style={{
+            padding: '12px 16px',
+            borderBottom: '1px solid rgba(0, 0, 0, 0.05)',
+            marginBottom: '4px',
+          }}>
+            <p style={{ 
+              fontSize: '14px', 
+              fontWeight: 600, 
+              color: '#111827',
+              margin: '0 0 4px 0',
+            }}>
+              {session.user.name}
+            </p>
+            <p style={{ 
+              fontSize: '12px', 
+              color: '#6b7280',
+              margin: 0,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}>
+              {session.user.email}
+            </p>
           </div>
           <button
             onClick={() => signOut()}
-            className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 transition-colors"
+            style={{
+              width: '100%',
+              textAlign: 'left',
+              padding: '10px 16px',
+              fontSize: '14px',
+              color: '#dc2626',
+              background: 'transparent',
+              border: 'none',
+              borderRadius: '10px',
+              cursor: 'pointer',
+              transition: 'all 0.2s',
+              fontWeight: 500,
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = '#fef2f2';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent';
+            }}
           >
             Sign Out
           </button>
         </div>
       )}
+
+      <style jsx>{`
+        @keyframes slideDown {
+          from {
+            opacity: 0;
+            transform: translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+      `}</style>
     </div>
   );
 }
