@@ -11,34 +11,24 @@ export default function SignInButton() {
       <button
         onClick={() => setShowModal(true)}
         style={{
-          padding: '10px 24px',
-          background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
-          color: 'white',
+          padding: '8px 16px',
+          background: '#000',
+          color: '#fff',
           border: 'none',
-          borderRadius: '12px',
-          fontWeight: 600,
+          borderRadius: '8px',
+          fontWeight: 400,
           fontSize: '14px',
           cursor: 'pointer',
-          transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-          boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)',
-          letterSpacing: '-0.01em',
+          transition: 'all 0.15s ease',
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.transform = 'translateY(-2px)';
-          e.currentTarget.style.boxShadow = '0 8px 20px rgba(59, 130, 246, 0.4)';
+          e.currentTarget.style.background = '#333';
         }}
         onMouseLeave={(e) => {
-          e.currentTarget.style.transform = 'translateY(0)';
-          e.currentTarget.style.boxShadow = '0 4px 12px rgba(59, 130, 246, 0.3)';
-        }}
-        onMouseDown={(e) => {
-          e.currentTarget.style.transform = 'scale(0.98)';
-        }}
-        onMouseUp={(e) => {
-          e.currentTarget.style.transform = 'translateY(-2px)';
+          e.currentTarget.style.background = '#000';
         }}
       >
-        Sign In
+        Sign in
       </button>
       {showModal && <AuthModal onClose={() => setShowModal(false)} />}
     </>

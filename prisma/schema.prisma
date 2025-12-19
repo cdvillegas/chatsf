@@ -79,9 +79,10 @@ model Neighborhood {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  ratings  Rating[]
-  comments Comment[]
-  tags     Tag[]
+  ratings            Rating[]
+  comments           Comment[]
+  tags               Tag[]
+  crimeStats         NeighborhoodCrimeStats?
 
   @@index([slug])
   @@map("neighborhoods")
@@ -167,4 +168,46 @@ model TagVote {
   @@unique([userId, tagId]) // One vote per user per tag
   @@index([tagId])
   @@map("tag_votes")
+}
+
+// Crime Data Models
+model CrimeIncident {
+  id            String   @id @default(cuid())
+  pdId          String   @unique // Original PdId from CSV
+  incidentNum   String
+  incidentCode  String
+  category      String   // VEHICLE THEFT, ASSAULT, etc.
+  description   String
+  dayOfWeek     String
+  date          DateTime
+  time          String
+  pdDistrict    String   // Police district
+  resolution    String   // NONE, ARREST, CITED, etc.
+  address       String
+  longitude     Float    // X coordinate
+  latitude      Float    // Y coordinate
+  neighborhood  String?  // Derived from coordinates
+  createdAt     DateTime @default(now())
+
+  @@index([neighborhood, category]) // Fast neighborhood+category queries
+  @@index([date]) // Time series queries
+  @@index([category]) // Category aggregations
+  @@index([pdDistrict]) // District queries
+  @@map("crime_incidents")
+}
+
+model NeighborhoodCrimeStats {
+  id                    String   @id @default(cuid())
+  neighborhoodId        String   @unique
+  totalIncidents        Int      @default(0)
+  violentCrimes         Int      @default(0)
+  propertyCrimes        Int      @default(0)
+  otherCrimes           Int      @default(0)
+  categoryBreakdown     Json     // { "ASSAULT": 150, "THEFT": 200, ... }
+  monthlyTrend          Json     // Time series data
+  lastUpdated           DateTime @updatedAt
+  
+  neighborhood Neighborhood @relation(fields: [neighborhoodId], references: [id], onDelete: Cascade)
+  
+  @@map("neighborhood_crime_stats")
 }

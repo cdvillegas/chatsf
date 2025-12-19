@@ -1,12 +1,27 @@
 # Quick Start Guide
 
-Get your SF Neighborhood Rating app up and running in 5 minutes!
+Get **AskSF** - your AI-powered San Francisco guide - up and running in 5 minutes!
+
+## What is AskSF?
+
+AskSF is an AI agent that answers any question about San Francisco using:
+- 🗺️ Beautiful interactive map with 117 neighborhood boundaries
+- 🤖 OpenAI GPT-4 with function calling for intelligent responses
+- 📊 Real SF data: crime stats, 311 reports, neighborhood ratings
+- 💬 ChatGPT-like interface with extensible data connectors
+
+**Ask questions like:**
+- "Where should I live if I want good food and safe streets?"
+- "Compare Marina and Mission neighborhoods"
+- "What are the safest neighborhoods in SF?"
+- "Show me neighborhoods with good nightlife"
 
 ## Prerequisites
 
 - Node.js 20+ installed
 - Docker Desktop running
 - A Mapbox account (free tier is fine)
+- An OpenAI API account
 
 ## Setup Steps
 
@@ -24,7 +39,7 @@ Create a `.env` file:
 cp .env.example .env
 ```
 
-**Edit `.env` and replace these 2 REQUIRED values:**
+**Edit `.env` and replace these 3 REQUIRED values:**
 
 1. **NEXTAUTH_SECRET** - Generate a secure secret:
    ```bash
@@ -33,6 +48,8 @@ cp .env.example .env
    Copy the output and replace `generate_with_openssl_rand_base64_32`
 
 2. **NEXT_PUBLIC_MAPBOX_TOKEN** - Replace `pk.xxx` with your actual Mapbox token (see step 3)
+
+3. **OPENAI_API_KEY** - Replace `sk-xxx` with your OpenAI API key (see step 4)
 
 **Leave everything else as-is for now.** The other values in `.env.example` will work for local development:
 - `DATABASE_URL` is already correct for Docker PostgreSQL
@@ -47,6 +64,14 @@ cp .env.example .env
 3. Go to Account → Tokens
 4. Copy your default public token (starts with `pk.`)
 5. Paste it in your `.env` file as `NEXT_PUBLIC_MAPBOX_TOKEN`
+
+### 4. Get Your OpenAI API Key
+
+1. Go to [OpenAI Platform](https://platform.openai.com/)
+2. Sign up and add billing (pay-as-you-go, ~$0.02-0.05 per question)
+3. Go to API Keys
+4. Create new secret key (starts with `sk-`)
+5. Paste it in your `.env` file as `OPENAI_API_KEY`
 
 ### 4. Start PostgreSQL
 
@@ -74,25 +99,35 @@ Visit **http://localhost:3000** 🎉
 
 ## What You'll See
 
-- **Interactive Map**: Real SF neighborhood boundaries from [DataSF](https://data.sfgov.org/-/SF-Find-Neighborhoods/pty2-tcw4)
-- **Hover Effects**: Electoral map-style hover with dynamic badges
-- **Color Coding**: Neighborhoods colored by rating (red = low, green = high)
-- **Click to Rate**: Click any neighborhood to view details and leave a rating
+- **🤖 AI Chat Interface**: ChatGPT-like sidebar to ask questions about SF
+- **🗺️ Interactive Map**: 117 SF neighborhoods with beautiful colors
+- **🎯 Smart Highlighting**: AI highlights neighborhoods on map based on your questions
+- **📊 Real Data**: Crime stats, 311 reports, ratings from DataSF APIs
+- **💬 Suggested Questions**: Quick start prompts to explore the city
 
 ## Quick Test
 
-1. **Hover over neighborhoods** - See the tooltip with stats
-2. **Click "Sign In"** - Use email/password (no OAuth needed for testing)
-3. **Click a neighborhood** - Opens detail panel
-4. **Rate it** - Give it a 5-star rating with category breakdowns
-5. **Leave a review** - Add a comment
-6. **Add tags** - Create community tags like "Dog Friendly"
+### Try the AI Chat:
+
+1. **Ask a question**: "Where should I live if I want good food and safe streets?"
+2. **Watch the magic**: AI queries neighborhood data, crime stats, and ratings
+3. **Map highlights**: Recommended neighborhoods light up on the map
+4. **Compare neighborhoods**: "Compare Marina and Mission"
+5. **Get specifics**: "Show me the safest neighborhoods with good transit"
+
+### Or Rate Manually:
+
+1. **Click a neighborhood** on the map
+2. **Rate it** with 5-star overall + category breakdowns
+3. **Leave a review** and add tags
+4. **AI learns** from your ratings to give better recommendations!
 
 ## What You Actually Need (Summary)
 
-### ✅ REQUIRED (2 things):
+### ✅ REQUIRED (3 things):
 1. **Mapbox Token** - Free at [mapbox.com](https://www.mapbox.com/)
-2. **NextAuth Secret** - Generate with `openssl rand -base64 32`
+2. **OpenAI API Key** - Pay-as-you-go at [platform.openai.com](https://platform.openai.com/) (~$0.02-0.05 per question)
+3. **NextAuth Secret** - Generate with `openssl rand -base64 32`
 
 ### ⚠️ NOT REQUIRED for Quick Start:
 - OAuth apps (Google/Facebook/Twitter) - You can use email/password sign-up instead

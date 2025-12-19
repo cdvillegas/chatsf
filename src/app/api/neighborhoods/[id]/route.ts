@@ -10,8 +10,14 @@ export async function GET(
     const { id } = await params;
     const session = await auth();
 
-    const neighborhood = await prisma.neighborhood.findUnique({
-      where: { id },
+    // Try to find by slug first, then by id
+    const neighborhood = await prisma.neighborhood.findFirst({
+      where: {
+        OR: [
+          { slug: id },
+          { id: id }
+        ]
+      },
       include: {
         comments: {
           include: {

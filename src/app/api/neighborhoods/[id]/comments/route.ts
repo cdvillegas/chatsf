@@ -25,9 +25,14 @@ export async function POST(
     const body = await request.json();
     const { content, photoUrls } = commentSchema.parse(body);
 
-    // Check if neighborhood exists
-    const neighborhood = await prisma.neighborhood.findUnique({
-      where: { id: neighborhoodId },
+    // Check if neighborhood exists (by slug or id)
+    const neighborhood = await prisma.neighborhood.findFirst({
+      where: {
+        OR: [
+          { slug: neighborhoodId },
+          { id: neighborhoodId }
+        ]
+      },
     });
 
     if (!neighborhood) {
@@ -41,7 +46,7 @@ export async function POST(
     const comment = await prisma.comment.create({
       data: {
         userId: session.user.id,
-        neighborhoodId,
+        neighborhoodId: neighborhood.id,
         content,
         photoUrls: photoUrls || [],
       },

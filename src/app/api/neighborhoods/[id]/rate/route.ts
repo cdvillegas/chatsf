@@ -32,9 +32,14 @@ export async function POST(
     const body = await request.json();
     const { rating, categories } = ratingSchema.parse(body);
 
-    // Check if neighborhood exists
-    const neighborhood = await prisma.neighborhood.findUnique({
-      where: { id: neighborhoodId },
+    // Check if neighborhood exists (by slug or id)
+    const neighborhood = await prisma.neighborhood.findFirst({
+      where: {
+        OR: [
+          { slug: neighborhoodId },
+          { id: neighborhoodId }
+        ]
+      },
     });
 
     if (!neighborhood) {
@@ -49,12 +54,12 @@ export async function POST(
       where: {
         userId_neighborhoodId: {
           userId: session.user.id,
-          neighborhoodId,
+          neighborhoodId: neighborhood.id,
         },
       },
       create: {
         userId: session.user.id,
-        neighborhoodId,
+        neighborhoodId: neighborhood.id,
         rating,
         categories,
       },
@@ -66,7 +71,7 @@ export async function POST(
 
     // Recalculate average rating
     const ratings = await prisma.rating.findMany({
-      where: { neighborhoodId },
+      where: { neighborhoodId: neighborhood.id },
       select: { rating: true },
     });
 
@@ -74,7 +79,7 @@ export async function POST(
       ratings.reduce((acc, r) => acc + r.rating, 0) / ratings.length;
 
     await prisma.neighborhood.update({
-      where: { id: neighborhoodId },
+      where: { id: neighborhood.id },
       data: {
         avgRating,
         ratingCount: ratings.length,

@@ -4,9 +4,11 @@ import { useSession } from 'next-auth/react';
 import SignInButton from './SignInButton';
 import UserMenu from './UserMenu';
 import Link from 'next/link';
+import { useTheme } from '@/contexts/ThemeContext';
 
 export default function Navbar() {
   const { data: session, status } = useSession();
+  const { theme, toggleTheme } = useTheme();
 
   return (
     <nav 
@@ -16,10 +18,11 @@ export default function Navbar() {
         left: 0,
         right: 0,
         zIndex: 50,
-        background: 'rgba(255, 255, 255, 0.8)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
-        borderBottom: '1px solid rgba(0, 0, 0, 0.05)',
+        background: 'var(--navbar-bg)',
+        backdropFilter: 'var(--backdrop-blur)',
+        WebkitBackdropFilter: 'var(--backdrop-blur)',
+        borderBottom: '1px solid var(--navbar-border)',
+        transition: 'all 0.3s ease',
       }}
     >
       <div style={{
@@ -38,56 +41,62 @@ export default function Navbar() {
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '12px',
+              gap: '8px',
               textDecoration: 'none',
-              transition: 'transform 0.2s',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.transform = 'scale(1.02)';
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.transform = 'scale(1)';
             }}
           >
-            <div style={{
-              width: '36px',
-              height: '36px',
-              borderRadius: '10px',
-              background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '18px',
-              boxShadow: '0 4px 12px rgba(59, 130, 246, 0.3)',
-            }}>
-              🏘️
-            </div>
+            <img 
+              src="/chatsf-logo.png" 
+              alt="ChatSF"
+              style={{
+                width: '20px',
+                height: '20px',
+                objectFit: 'contain',
+              }}
+            />
             <span style={{
               fontSize: '18px',
-              fontWeight: 700,
-              background: 'linear-gradient(135deg, #1e40af 0%, #7c3aed 100%)',
-              WebkitBackgroundClip: 'text',
-              WebkitTextFillColor: 'transparent',
-              backgroundClip: 'text',
-              letterSpacing: '-0.02em',
+              fontWeight: 500,
+              color: 'var(--text-primary)',
+              letterSpacing: '-0.01em',
             }}>
-              Rate My Neighborhood
+              ChatSF
             </span>
           </Link>
 
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            gap: '16px',
+            gap: '12px',
           }}>
+            {/* Dark Mode Toggle */}
+            <button
+              onClick={toggleTheme}
+              className="theme-toggle"
+              style={{
+                width: '40px',
+                height: '40px',
+                borderRadius: '8px',
+                border: 'none',
+                background: 'transparent',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                fontSize: '18px',
+                transition: 'all 0.15s ease',
+              }}
+              title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {theme === 'dark' ? '☀️' : '🌙'}
+            </button>
+
             {status === 'loading' ? (
               <div style={{
                 height: '40px',
                 width: '96px',
-                background: 'linear-gradient(90deg, #f3f4f6 0%, #e5e7eb 50%, #f3f4f6 100%)',
-                backgroundSize: '200% 100%',
-                animation: 'shimmer 1.5s infinite',
-                borderRadius: '12px',
+                background: 'rgba(0, 0, 0, 0.05)',
+                borderRadius: '10px',
               }} />
             ) : session ? (
               <UserMenu />
@@ -97,13 +106,6 @@ export default function Navbar() {
           </div>
         </div>
       </div>
-
-      <style jsx>{`
-        @keyframes shimmer {
-          0% { background-position: 200% 0; }
-          100% { background-position: -200% 0; }
-        }
-      `}</style>
     </nav>
   );
 }

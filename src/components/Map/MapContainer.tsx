@@ -1,14 +1,31 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import mapboxgl from 'mapbox-gl';
 
-export default function MapContainer() {
+interface MapContainerProps {
+  highlightedNeighborhoods?: string[];
+  onNeighborhoodSelect?: (slug: string | null) => void;
+  isChatVisible?: boolean;
+  mapAction?: {
+    type: 'showHeatmap' | 'showNeighborhoods';
+    data?: any;
+  } | null;
+}
+
+export default function MapContainer({ 
+  highlightedNeighborhoods = [],
+  onNeighborhoodSelect,
+  isChatVisible = true,
+  mapAction = null
+}: MapContainerProps) {
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const [hoveredNeighborhood, setHoveredNeighborhood] = useState<string | null>(null);
-  const [selectedNeighborhood, setSelectedNeighborhood] = useState<string | null>(null);
-  const popupRef = useRef<mapboxgl.Popup | null>(null);
+  const [neighborhoodsData, setNeighborhoodsData] = useState<any>(null);
+  const [visualizationMode, setVisualizationMode] = useState<'neighborhoods' | 'heatmap' | 'both'>('neighborhoods');
+  const [crimeData, setCrimeData] = useState<any>(null);
+  const [isLoadingCrime, setIsLoadingCrime] = useState(false);
 
   useEffect(() => {
     if (map.current) return;
@@ -25,7 +42,7 @@ export default function MapContainer() {
 
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/light-v11',
+      style: 'mapbox://styles/mapbox/streets-v12',
       center: [-122.4194, 37.7749],
       zoom: 12.5,
       pitch: 0,
@@ -49,6 +66,45 @@ export default function MapContainer() {
         
         console.log(`✨ Loaded ${sfNeighborhoods.features.length} neighborhoods`);
 
+        // Try to fetch crime stats (non-blocking)
+        try {
+          const crimeResponse = await fetch('/api/neighborhoods/crime-stats');
+          if (crimeResponse.ok) {
+            const crimeStats = await crimeResponse.json();
+            
+            // Create a map of slug to crime stats
+            const crimeStatsMap = new Map();
+            crimeStats.forEach((stat: any) => {
+              crimeStatsMap.set(stat.slug, stat);
+            });
+            
+            // Merge crime stats into neighborhood features
+            sfNeighborhoods.features = sfNeighborhoods.features.map((feature: any) => {
+              const slug = feature.properties.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+              const stats = crimeStatsMap.get(slug);
+              
+              return {
+                ...feature,
+                properties: {
+                  ...feature.properties,
+                  crimeRate: stats?.totalIncidents || 0,
+                  violentCrimes: stats?.violentCrimes || 0,
+                  propertyCrimes: stats?.propertyCrimes || 0,
+                }
+              };
+            });
+            
+            console.log('✅ Merged crime stats into neighborhoods');
+          } else {
+            console.warn('Crime stats API not available, using default coloring');
+          }
+        } catch (err) {
+          console.warn('Failed to load crime stats, map will still work:', err);
+        }
+
+        // Store neighborhoods data for later use
+        setNeighborhoodsData(sfNeighborhoods);
+
         // Add neighborhood data
         map.current.addSource('neighborhoods', {
           type: 'geojson',
@@ -56,7 +112,7 @@ export default function MapContainer() {
           generateId: true,
         });
 
-        // Fill layer with gradient
+        // Fill layer with crime-rate coloring (green = safe, red = high crime)
         map.current.addLayer({
           id: 'neighborhoods-fill',
           type: 'fill',
@@ -64,24 +120,68 @@ export default function MapContainer() {
           paint: {
             'fill-color': [
               'case',
-              ['boolean', ['feature-state', 'selected'], false],
-              '#3b82f6',
-              ['boolean', ['feature-state', 'hover'], false],
-              '#60a5fa',
-              '#93c5fd'
+              ['>', ['get', 'crimeRate'], 0],
+              [
+                'interpolate',
+                ['linear'],
+                ['get', 'crimeRate'],
+                0, '#00ff00',      // No crime = bright green
+                5000, '#7FFF00',   // Low = chartreuse
+                10000, '#FFFF00',  // Low-medium = yellow
+                15000, '#FFD700',  // Medium = gold
+                20000, '#FFA500',  // Medium-high = orange
+                25000, '#FF6347',  // High = tomato
+                30000, '#FF0000'   // Very high = red
+              ],
+              // Fallback to vibrant colors if no crime data
+              [
+                'match',
+                ['%', ['id'], 20],
+                0, '#FF6B9D',
+                1, '#4ECDC4',
+                2, '#FFD93D',
+                3, '#FF6F61',
+                4, '#6BCF7F',
+                5, '#95E1D3',
+                6, '#F38181',
+                7, '#AA96DA',
+                8, '#FCBAD3',
+                9, '#A8E6CF',
+                10, '#FFD54F',
+                11, '#81C784',
+                12, '#64B5F6',
+                13, '#FFB74D',
+                14, '#E57373',
+                15, '#BA68C8',
+                16, '#4DB6AC',
+                17, '#FF8A65',
+                18, '#9575CD',
+                19, '#AED581',
+                '#FF6B9D'
+              ]
             ],
             'fill-opacity': [
               'interpolate',
               ['linear'],
               ['zoom'],
-              11, 0.3,
-              13, 0.5
+              11, [
+                'case',
+                ['boolean', ['feature-state', 'hover'], false],
+                0.7,
+                0.5
+              ],
+              13, [
+                'case',
+                ['boolean', ['feature-state', 'hover'], false],
+                0.8,
+                0.65
+              ]
             ],
           },
           layout: {},
         });
 
-        // Outline layer
+        // Outline layer with vibrant matching colors
         map.current.addLayer({
           id: 'neighborhoods-outline',
           type: 'line',
@@ -89,21 +189,46 @@ export default function MapContainer() {
           paint: {
             'line-color': [
               'case',
-              ['boolean', ['feature-state', 'selected'], false],
-              '#1e40af',
               ['boolean', ['feature-state', 'hover'], false],
-              '#2563eb',
+              [
+                'match',
+                ['%', ['id'], 20],
+                0, '#FF5582',
+                1, '#3CCCC3',
+                2, '#FFDD57',
+                3, '#FF5C54',
+                4, '#5FD068',
+                5, '#85DDD0',
+                6, '#FF6F6C',
+                7, '#9D85CF',
+                8, '#FFADD0',
+                9, '#98EBC0',
+                10, '#FFDD3F',
+                11, '#71D77A',
+                12, '#54C5FF',
+                13, '#FFBB40',
+                14, '#FF6B6B',
+                15, '#C058D2',
+                16, '#3DC4B5',
+                17, '#FF9560',
+                18, '#8C6AD1',
+                19, '#ACE571',
+                '#FF5582'
+              ],
               '#ffffff'
             ],
             'line-width': [
               'case',
-              ['boolean', ['feature-state', 'selected'], false],
-              3,
               ['boolean', ['feature-state', 'hover'], false],
               2.5,
               1.5
             ],
-            'line-opacity': 0.8,
+            'line-opacity': [
+              'case',
+              ['boolean', ['feature-state', 'hover'], false],
+              0.9,
+              0.7
+            ],
           },
         });
 
@@ -140,8 +265,88 @@ export default function MapContainer() {
           },
         });
 
+        // Add crime heatmap source (initially empty)
+        map.current.addSource('crime-points', {
+          type: 'geojson',
+          data: {
+            type: 'FeatureCollection',
+            features: []
+          }
+        });
+
+        // Add heatmap layer
+        map.current.addLayer({
+          id: 'crime-heatmap',
+          type: 'heatmap',
+          source: 'crime-points',
+          paint: {
+            'heatmap-intensity': [
+              'interpolate',
+              ['linear'],
+              ['zoom'],
+              0, 1,
+              15, 3
+            ],
+            'heatmap-color': [
+              'interpolate',
+              ['linear'],
+              ['heatmap-density'],
+              0, 'rgba(0, 0, 255, 0)',
+              0.2, 'royalblue',
+              0.4, 'cyan',
+              0.6, 'lime',
+              0.8, 'yellow',
+              1, 'red'
+            ],
+            'heatmap-radius': [
+              'interpolate',
+              ['linear'],
+              ['zoom'],
+              0, 2,
+              15, 20
+            ],
+            'heatmap-opacity': 0.8,
+          },
+          layout: {
+            visibility: 'none' // Start hidden
+          }
+        });
+
+        // Add crime points layer (for detailed view)
+        map.current.addLayer({
+          id: 'crime-points',
+          type: 'circle',
+          source: 'crime-points',
+          paint: {
+            'circle-radius': [
+              'interpolate',
+              ['linear'],
+              ['zoom'],
+              11, 2,
+              15, 4
+            ],
+            'circle-color': [
+              'match',
+              ['get', 'category'],
+              'ASSAULT', '#ff0000',
+              'ROBBERY', '#ff3300',
+              'BURGLARY', '#ff6600',
+              'LARCENY/THEFT', '#ff9900',
+              'VEHICLE THEFT', '#ffcc00',
+              'VANDALISM', '#ffff00',
+              '#ff6600' // default
+            ],
+            'circle-opacity': 0.6,
+            'circle-stroke-width': 1,
+            'circle-stroke-color': '#ffffff',
+            'circle-stroke-opacity': 0.5,
+          },
+          layout: {
+            visibility: 'none' // Start hidden
+          }
+        });
+
         let hoveredFeatureId: number | null = null;
-        let selectedFeatureId: number | null = null;
 
         // Smooth hover effect
         map.current.on('mousemove', 'neighborhoods-fill', (e) => {
@@ -152,7 +357,7 @@ export default function MapContainer() {
           if (e.features && e.features.length > 0) {
             const feature = e.features[0];
             
-            if (hoveredFeatureId !== null && hoveredFeatureId !== selectedFeatureId) {
+            if (hoveredFeatureId !== null) {
               map.current.setFeatureState(
                 { source: 'neighborhoods', id: hoveredFeatureId },
                 { hover: false }
@@ -161,12 +366,10 @@ export default function MapContainer() {
 
             hoveredFeatureId = feature.id as number;
             
-            if (hoveredFeatureId !== selectedFeatureId) {
-              map.current.setFeatureState(
-                { source: 'neighborhoods', id: hoveredFeatureId },
-                { hover: true }
-              );
-            }
+            map.current.setFeatureState(
+              { source: 'neighborhoods', id: hoveredFeatureId },
+              { hover: true }
+            );
 
             setHoveredNeighborhood(feature.properties?.name);
           }
@@ -177,7 +380,7 @@ export default function MapContainer() {
           
           map.current.getCanvas().style.cursor = '';
 
-          if (hoveredFeatureId !== null && hoveredFeatureId !== selectedFeatureId) {
+          if (hoveredFeatureId !== null) {
             map.current.setFeatureState(
               { source: 'neighborhoods', id: hoveredFeatureId },
               { hover: false }
@@ -188,168 +391,22 @@ export default function MapContainer() {
           setHoveredNeighborhood(null);
         });
 
-        // Click with beautiful popup
+        // Click to fly to neighborhood
         map.current.on('click', 'neighborhoods-fill', (e) => {
           if (!map.current || !e.features || e.features.length === 0) return;
 
           const feature = e.features[0];
           const name = feature.properties?.name;
-          const link = feature.properties?.link;
 
-          // Remove previous selection
-          if (selectedFeatureId !== null) {
-            map.current.setFeatureState(
-              { source: 'neighborhoods', id: selectedFeatureId },
-              { selected: false }
-            );
-          }
-
-          // Set new selection
-          selectedFeatureId = feature.id as number;
-          map.current.setFeatureState(
-            { source: 'neighborhoods', id: selectedFeatureId },
-            { selected: true }
-          );
-
-          setSelectedNeighborhood(name);
-
-          // Remove existing popup
-          if (popupRef.current) {
-            popupRef.current.remove();
-          }
-
-          // Create beautiful popup
-          const popupHTML = `
-            <div style="
-              padding: 20px; 
-              min-width: 280px;
-              font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-            ">
-              <div style="
-                display: flex;
-                align-items: center;
-                gap: 12px;
-                margin-bottom: 16px;
-              ">
-                <div style="
-                  width: 12px;
-                  height: 12px;
-                  border-radius: 50%;
-                  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
-                  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
-                "></div>
-                <h3 style="
-                  font-weight: 600; 
-                  font-size: 20px; 
-                  margin: 0;
-                  color: #111827;
-                  letter-spacing: -0.01em;
-                ">${name}</h3>
-              </div>
-              <div style="
-                padding: 12px;
-                background: linear-gradient(135deg, #f0f9ff 0%, #f5f3ff 100%);
-                border-radius: 12px;
-                margin-bottom: 12px;
-              ">
-                <div style="
-                  font-size: 14px;
-                  color: #6b7280;
-                  margin-bottom: 8px;
-                ">Coming soon:</div>
-                <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                  <span style="
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 4px;
-                    padding: 4px 10px;
-                    background: white;
-                    border-radius: 6px;
-                    font-size: 13px;
-                    color: #3b82f6;
-                    font-weight: 500;
-                  ">⭐ Ratings</span>
-                  <span style="
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 4px;
-                    padding: 4px 10px;
-                    background: white;
-                    border-radius: 6px;
-                    font-size: 13px;
-                    color: #8b5cf6;
-                    font-weight: 500;
-                  ">💬 Reviews</span>
-                  <span style="
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 4px;
-                    padding: 4px 10px;
-                    background: white;
-                    border-radius: 6px;
-                    font-size: 13px;
-                    color: #ec4899;
-                    font-weight: 500;
-                  ">📸 Photos</span>
-                </div>
-              </div>
-              ${link ? `
-                <a 
-                  href="${link}" 
-                  target="_blank"
-                  style="
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 6px;
-                    color: #3b82f6; 
-                    text-decoration: none; 
-                    font-size: 14px;
-                    font-weight: 500;
-                    transition: all 0.2s;
-                  "
-                  onmouseover="this.style.gap='8px'"
-                  onmouseout="this.style.gap='6px'"
-                >
-                  Learn more on Wikipedia
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"></path>
-                    <polyline points="15 3 21 3 21 9"></polyline>
-                    <line x1="10" y1="14" x2="21" y2="3"></line>
-                  </svg>
-                </a>
-              ` : ''}
-            </div>
-          `;
-
-          popupRef.current = new mapboxgl.Popup({
-            closeButton: true,
-            closeOnClick: false,
-            maxWidth: '320px',
-            className: 'custom-popup',
-            offset: 15,
-          })
-            .setLngLat(e.lngLat)
-            .setHTML(popupHTML)
-            .addTo(map.current);
+          console.log('Clicked neighborhood:', name);
 
           // Smooth fly to
           map.current.flyTo({
             center: e.lngLat,
             zoom: 13.5,
-            duration: 1000,
+            duration: 800,
             essential: true,
-            easing: (t) => t * (2 - t), // easeOutQuad
-          });
-
-          popupRef.current.on('close', () => {
-            if (map.current && selectedFeatureId !== null) {
-              map.current.setFeatureState(
-                { source: 'neighborhoods', id: selectedFeatureId },
-                { selected: false }
-              );
-              selectedFeatureId = null;
-              setSelectedNeighborhood(null);
-            }
+            easing: (t) => t * (2 - t),
           });
         });
 
@@ -366,179 +423,228 @@ export default function MapContainer() {
     };
   }, []);
 
+
+  // Handle highlighted neighborhoods from AI chat
+  useEffect(() => {
+    if (!map.current || !neighborhoodsData || highlightedNeighborhoods.length === 0) return;
+
+    console.log('🎯 Highlighting neighborhoods:', highlightedNeighborhoods);
+
+    // Find matching features
+    const features = neighborhoodsData.features.filter((feature: any) => {
+      const name = feature.properties?.name?.toLowerCase() || '';
+      const slug = name.replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+      return highlightedNeighborhoods.some(hn => 
+        hn.toLowerCase() === slug || 
+        hn.toLowerCase().includes(name) ||
+        name.includes(hn.toLowerCase())
+      );
+    });
+
+    if (features.length === 0) {
+      console.log('No matching neighborhoods found');
+      return;
+    }
+
+    console.log(`Found ${features.length} matching neighborhoods`);
+
+    // Calculate bounds for all highlighted neighborhoods
+    const bounds = new mapboxgl.LngLatBounds();
+    features.forEach((feature: any) => {
+      if (feature.geometry.type === 'MultiPolygon') {
+        feature.geometry.coordinates.forEach((polygon: any) => {
+          polygon[0].forEach((coord: any) => {
+            bounds.extend(coord as [number, number]);
+          });
+        });
+      }
+    });
+
+    // Fly to show all highlighted neighborhoods
+    map.current.fitBounds(bounds, {
+      padding: { top: 100, bottom: 100, left: 100, right: 500 }, // Account for chat panel
+      duration: 1200,
+      maxZoom: 13.5,
+    });
+
+  }, [highlightedNeighborhoods, neighborhoodsData]);
+
+  // Load crime data
+  const loadCrimeData = useCallback(async (neighborhood?: string, category?: string) => {
+    if (!map.current) return;
+    
+    setIsLoadingCrime(true);
+    try {
+      const params = new URLSearchParams();
+      if (neighborhood) params.append('neighborhood', neighborhood);
+      if (category) params.append('category', category);
+      params.append('limit', '1000');
+      
+      const response = await fetch(`/api/crime/heatmap?${params}`);
+      const data = await response.json();
+      
+      setCrimeData(data);
+      
+      // Update map source
+      const source = map.current.getSource('crime-points');
+      if (source && source.type === 'geojson') {
+        (source as mapboxgl.GeoJSONSource).setData(data);
+      }
+      
+      console.log(`✅ Loaded ${data.features.length} crime incidents`);
+    } catch (error) {
+      console.error('Failed to load crime data:', error);
+    } finally {
+      setIsLoadingCrime(false);
+    }
+  }, []);
+
+  // Toggle visualization mode
+  useEffect(() => {
+    if (!map.current || !map.current.isStyleLoaded()) return;
+    
+    // Check if layers exist before trying to modify them
+    if (!map.current.getLayer('neighborhoods-fill')) {
+      console.log('Layers not ready yet, skipping visibility toggle');
+      return;
+    }
+    
+    const neighborhoodsVisible = visualizationMode === 'neighborhoods' || visualizationMode === 'both';
+    const crimeVisible = visualizationMode === 'heatmap' || visualizationMode === 'both';
+    
+    console.log('Setting visualization mode:', visualizationMode);
+    
+    // Toggle neighborhood layers
+    map.current.setLayoutProperty('neighborhoods-fill', 'visibility', neighborhoodsVisible ? 'visible' : 'none');
+    map.current.setLayoutProperty('neighborhoods-outline', 'visibility', neighborhoodsVisible ? 'visible' : 'none');
+    map.current.setLayoutProperty('neighborhoods-labels', 'visibility', neighborhoodsVisible ? 'visible' : 'none');
+    
+    // Toggle crime layers
+    if (map.current.getLayer('crime-heatmap')) {
+      map.current.setLayoutProperty('crime-heatmap', 'visibility', crimeVisible ? 'visible' : 'none');
+    }
+    
+    // Load crime data if switching to crime view and no data loaded yet
+    if (crimeVisible && !crimeData) {
+      loadCrimeData();
+    }
+  }, [visualizationMode]);
+
+  // Handle map actions from AI
+  useEffect(() => {
+    if (!map.current || !mapAction || !map.current.isStyleLoaded()) return;
+    
+    if (mapAction.type === 'showHeatmap' && mapAction.data) {
+      console.log('🎯 AI requested heat map visualization');
+      
+      // Update crime data source with AI-provided data
+      const source = map.current.getSource('crime-points');
+      if (source && source.type === 'geojson') {
+        (source as mapboxgl.GeoJSONSource).setData(mapAction.data);
+        setCrimeData(mapAction.data);
+      }
+      
+      // Switch to heat map or both view
+      setVisualizationMode('both');
+    }
+  }, [mapAction]);
+
   return (
     <>
-      <style jsx global>{`
-        .mapboxgl-popup-content {
-          padding: 0 !important;
-          border-radius: 16px !important;
-          box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04) !important;
-          border: 1px solid rgba(0, 0, 0, 0.05);
-        }
-        
-        .mapboxgl-popup-close-button {
-          font-size: 24px !important;
-          padding: 8px 12px !important;
-          color: #9ca3af !important;
-          transition: all 0.2s;
-        }
-        
-        .mapboxgl-popup-close-button:hover {
-          background-color: #f3f4f6 !important;
-          color: #374151 !important;
-        }
-
-        .mapboxgl-ctrl-group {
-          border-radius: 12px !important;
-          box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
-          border: 1px solid rgba(0, 0, 0, 0.05) !important;
-        }
-
-        .mapboxgl-ctrl-group button {
-          width: 36px !important;
-          height: 36px !important;
-        }
-
-        .mapboxgl-ctrl-group button + button {
-          border-top: 1px solid rgba(0, 0, 0, 0.05) !important;
-        }
-      `}</style>
-
-      <div ref={mapContainer} style={{ width: '100%', height: '100vh' }} />
+      <div 
+        ref={mapContainer} 
+        style={{ 
+          width: '100%', 
+          height: '100vh',
+          position: 'relative',
+        }} 
+      />
       
-      {/* Glassmorphic hover tooltip */}
-      {hoveredNeighborhood && !selectedNeighborhood && (
+      {/* Hover tooltip */}
+      {hoveredNeighborhood && (
         <div
           style={{
             position: 'absolute',
             top: '88px',
             left: '24px',
-            background: 'rgba(255, 255, 255, 0.95)',
-            backdropFilter: 'blur(12px)',
-            WebkitBackdropFilter: 'blur(12px)',
-            borderRadius: '16px',
-            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.08)',
-            padding: '16px 20px',
+            background: '#fff',
+            borderRadius: '8px',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+            padding: '10px 14px',
             zIndex: 10,
             pointerEvents: 'none',
-            border: '1px solid rgba(255, 255, 255, 0.5)',
-            animation: 'fadeIn 0.2s ease-out',
+            border: '1px solid #e5e5e5',
           }}
         >
           <p style={{ 
-            fontWeight: 600, 
-            color: '#111827', 
+            fontWeight: 500, 
+            color: '#000', 
             margin: 0,
-            fontSize: '16px',
-            letterSpacing: '-0.01em',
+            fontSize: '14px',
           }}>
             {hoveredNeighborhood}
-          </p>
-          <p style={{ 
-            fontSize: '12px', 
-            color: '#6b7280', 
-            margin: '4px 0 0 0',
-            fontWeight: 500,
-          }}>
-            Click to explore
           </p>
         </div>
       )}
 
-      {/* Beautiful info card */}
+
+      {/* Visualization Mode Toggle */}
       <div
         style={{
           position: 'absolute',
-          bottom: '24px',
-          right: '24px',
-          background: 'rgba(255, 255, 255, 0.95)',
-          backdropFilter: 'blur(12px)',
-          WebkitBackdropFilter: 'blur(12px)',
-          borderRadius: '20px',
-          boxShadow: '0 20px 40px rgba(0, 0, 0, 0.1)',
-          padding: '24px',
-          zIndex: 10,
-          maxWidth: '320px',
-          border: '1px solid rgba(255, 255, 255, 0.5)',
+          top: '88px',
+          right: isChatVisible ? '504px' : '24px',
+          zIndex: 20,
+          transition: 'right 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         }}
       >
-        <div style={{ 
-          display: 'flex', 
-          alignItems: 'center', 
-          gap: '12px',
-          marginBottom: '16px',
-        }}>
-          <div style={{
-            width: '40px',
-            height: '40px',
-            borderRadius: '12px',
-            background: 'linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '20px',
-          }}>
-            🏘️
-          </div>
-          <div>
-            <h3 style={{ 
-              fontWeight: 700, 
-              fontSize: '18px', 
-              color: '#111827', 
-              margin: 0,
-              letterSpacing: '-0.02em',
-            }}>
-              San Francisco
-            </h3>
-            <p style={{ 
-              fontSize: '13px', 
-              color: '#6b7280', 
-              margin: '2px 0 0 0',
-              fontWeight: 500,
-            }}>
-              117 neighborhoods
-            </p>
-          </div>
-        </div>
-        
-        <div style={{
-          padding: '16px',
-          background: 'linear-gradient(135deg, #f0f9ff 0%, #f5f3ff 100%)',
-          borderRadius: '12px',
-          marginBottom: '12px',
-        }}>
-          <p style={{ 
-            fontSize: '13px', 
-            color: '#4b5563',
-            margin: 0,
-            lineHeight: '1.6',
-            fontWeight: 500,
-          }}>
-            Explore neighborhoods, discover hidden gems, and find your perfect SF spot.
-          </p>
-        </div>
-
-        <div style={{ 
-          fontSize: '12px', 
-          color: '#9ca3af',
-          fontWeight: 500,
-        }}>
-          💡 Hover to preview • Click to explore
+        <div
+          style={{
+            background: '#fff',
+            borderRadius: '10px',
+            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
+            padding: '6px',
+            border: '1px solid #e5e5e5',
+          }}
+        >
+          {(['neighborhoods', 'heatmap', 'both'] as const).map((mode) => (
+            <button
+              key={mode}
+              onClick={() => setVisualizationMode(mode)}
+              style={{
+                display: 'block',
+                width: '100%',
+                padding: '8px 14px',
+                fontSize: '13px',
+                fontWeight: visualizationMode === mode ? '500' : '400',
+                color: visualizationMode === mode ? '#000' : '#666',
+                background: visualizationMode === mode ? '#f0f0f0' : 'transparent',
+                border: 'none',
+                borderRadius: '6px',
+                cursor: 'pointer',
+                transition: 'all 0.15s ease',
+                textAlign: 'left',
+                marginBottom: mode === 'both' ? '0' : '2px',
+              }}
+              onMouseEnter={(e) => {
+                if (visualizationMode !== mode) {
+                  e.currentTarget.style.background = '#f9f9f9';
+                }
+              }}
+              onMouseLeave={(e) => {
+                if (visualizationMode !== mode) {
+                  e.currentTarget.style.background = 'transparent';
+                }
+              }}
+            >
+              {mode === 'neighborhoods' && '🗺️ Neighborhoods'}
+              {mode === 'heatmap' && '🔥 Crime Data'}
+              {mode === 'both' && '👁️ Both'}
+            </button>
+          ))}
         </div>
       </div>
 
-      <style jsx>{`
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-            transform: translateY(-8px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-      `}</style>
     </>
   );
 }

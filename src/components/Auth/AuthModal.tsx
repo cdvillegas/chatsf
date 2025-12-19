@@ -94,31 +94,121 @@ export default function AuthModal({ onClose }: AuthModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl max-w-md w-full p-6 relative">
+    <div 
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        background: 'rgba(0, 0, 0, 0.6)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '20px',
+        zIndex: 100,
+        overflowY: 'auto',
+      }}
+      onClick={onClose}
+    >
+      <div 
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          background: '#fff',
+          borderRadius: '16px',
+          maxWidth: '400px',
+          width: '100%',
+          padding: '40px',
+          position: 'relative',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
+          margin: '80px auto',
+          maxHeight: 'calc(100vh - 160px)',
+          overflowY: 'auto',
+        }}
+      >
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 text-2xl"
+          style={{
+            position: 'absolute',
+            top: '16px',
+            right: '16px',
+            background: 'none',
+            border: 'none',
+            fontSize: '20px',
+            color: '#666',
+            cursor: 'pointer',
+            padding: '4px 8px',
+            borderRadius: '6px',
+            transition: 'all 0.15s ease',
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = '#f0f0f0';
+            e.currentTarget.style.color = '#000';
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = 'none';
+            e.currentTarget.style.color = '#666';
+          }}
         >
-          ×
+          ✕
         </button>
 
-        <h2 className="text-2xl font-bold text-gray-900 mb-6">
-          {isSignUp ? 'Create Account' : 'Welcome Back'}
+        <h2 style={{
+          fontSize: '24px',
+          fontWeight: '500',
+          color: '#000',
+          marginBottom: '32px',
+          textAlign: 'center',
+          letterSpacing: '-0.02em',
+        }}>
+          {isSignUp ? 'Create your account' : 'Welcome back'}
         </h2>
 
         {error && (
-          <div className="mb-4 p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
+          <div style={{
+            marginBottom: '20px',
+            padding: '12px 16px',
+            background: '#fee',
+            border: '1px solid #fcc',
+            color: '#c00',
+            borderRadius: '8px',
+            fontSize: '14px',
+          }}>
             {error}
           </div>
         )}
 
         {/* Social Login Buttons */}
-        <div className="space-y-3 mb-6">
+        <div style={{ marginBottom: '24px' }}>
           <button
             onClick={() => handleSocialSignIn('google')}
             disabled={loading}
-            className="w-full flex items-center justify-center gap-3 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '12px',
+              padding: '12px 16px',
+              border: '1px solid #e5e5e5',
+              borderRadius: '10px',
+              background: '#fff',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              transition: 'all 0.15s ease',
+              fontSize: '15px',
+              fontWeight: '400',
+              color: '#000',
+              marginBottom: '10px',
+              opacity: loading ? 0.5 : 1,
+            }}
+            onMouseEnter={(e) => {
+              if (!loading) e.currentTarget.style.background = '#f9f9f9';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = '#fff';
+            }}
           >
             <svg className="w-5 h-5" viewBox="0 0 24 24">
               <path
@@ -138,46 +228,94 @@ export default function AuthModal({ onClose }: AuthModalProps) {
                 d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
               />
             </svg>
-            <span className="font-medium text-gray-700">Continue with Google</span>
+            <span>Continue with Google</span>
           </button>
 
           <button
             onClick={() => handleSocialSignIn('facebook')}
             disabled={loading}
-            className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-[#1877F2] text-white rounded-lg hover:bg-[#166FE5] transition-colors disabled:opacity-50"
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '12px',
+              padding: '12px 16px',
+              border: '1px solid #e5e5e5',
+              borderRadius: '10px',
+              background: '#fff',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              transition: 'all 0.15s ease',
+              fontSize: '15px',
+              fontWeight: '400',
+              color: '#000',
+              marginBottom: '10px',
+              opacity: loading ? 0.5 : 1,
+            }}
+            onMouseEnter={(e) => {
+              if (!loading) e.currentTarget.style.background = '#f9f9f9';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = '#fff';
+            }}
           >
             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
               <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
             </svg>
-            <span className="font-medium">Continue with Facebook</span>
+            <span>Continue with Facebook</span>
           </button>
 
           <button
             onClick={() => handleSocialSignIn('twitter')}
             disabled={loading}
-            className="w-full flex items-center justify-center gap-3 px-4 py-3 bg-black text-white rounded-lg hover:bg-gray-900 transition-colors disabled:opacity-50"
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '12px',
+              padding: '12px 16px',
+              border: '1px solid #e5e5e5',
+              borderRadius: '10px',
+              background: '#fff',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              transition: 'all 0.15s ease',
+              fontSize: '15px',
+              fontWeight: '400',
+              color: '#000',
+              opacity: loading ? 0.5 : 1,
+            }}
+            onMouseEnter={(e) => {
+              if (!loading) e.currentTarget.style.background = '#f9f9f9';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = '#fff';
+            }}
           >
             <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
               <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
             </svg>
-            <span className="font-medium">Continue with Twitter</span>
+            <span>Continue with Twitter</span>
           </button>
         </div>
 
-        <div className="relative mb-6">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-gray-300"></div>
-          </div>
-          <div className="relative flex justify-center text-sm">
-            <span className="px-2 bg-white text-gray-500">Or continue with email</span>
-          </div>
+        <div style={{ 
+          position: 'relative', 
+          marginBottom: '24px',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '16px',
+        }}>
+          <div style={{ flex: 1, height: '1px', background: '#e5e5e5' }}></div>
+          <span style={{ fontSize: '13px', color: '#666' }}>or</span>
+          <div style={{ flex: 1, height: '1px', background: '#e5e5e5' }}></div>
         </div>
 
         {/* Email/Password Form */}
-        <form onSubmit={isSignUp ? handleSignUp : handleEmailSignIn} className="space-y-4">
+        <form onSubmit={isSignUp ? handleSignUp : handleEmailSignIn} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           {isSignUp && (
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="name" style={{ display: 'block', fontSize: '14px', fontWeight: '400', color: '#000', marginBottom: '6px' }}>
                 Name
               </label>
               <input
@@ -186,14 +324,24 @@ export default function AuthModal({ onClose }: AuthModalProps) {
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 required
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                style={{
+                  width: '100%',
+                  padding: '12px 14px',
+                  border: '1px solid #e5e5e5',
+                  borderRadius: '8px',
+                  fontSize: '15px',
+                  outline: 'none',
+                  transition: 'all 0.15s ease',
+                }}
                 placeholder="Your name"
+                onFocus={(e) => e.target.style.borderColor = '#000'}
+                onBlur={(e) => e.target.style.borderColor = '#e5e5e5'}
               />
             </div>
           )}
 
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="email" style={{ display: 'block', fontSize: '14px', fontWeight: '400', color: '#000', marginBottom: '6px' }}>
               Email
             </label>
             <input
@@ -202,13 +350,23 @@ export default function AuthModal({ onClose }: AuthModalProps) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              style={{
+                width: '100%',
+                padding: '12px 14px',
+                border: '1px solid #e5e5e5',
+                borderRadius: '8px',
+                fontSize: '15px',
+                outline: 'none',
+                transition: 'all 0.15s ease',
+              }}
               placeholder="you@example.com"
+              onFocus={(e) => e.target.style.borderColor = '#000'}
+              onBlur={(e) => e.target.style.borderColor = '#e5e5e5'}
             />
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="password" style={{ display: 'block', fontSize: '14px', fontWeight: '400', color: '#000', marginBottom: '6px' }}>
               Password
             </label>
             <input
@@ -218,30 +376,65 @@ export default function AuthModal({ onClose }: AuthModalProps) {
               onChange={(e) => setPassword(e.target.value)}
               required
               minLength={8}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              style={{
+                width: '100%',
+                padding: '12px 14px',
+                border: '1px solid #e5e5e5',
+                borderRadius: '8px',
+                fontSize: '15px',
+                outline: 'none',
+                transition: 'all 0.15s ease',
+              }}
               placeholder="••••••••"
+              onFocus={(e) => e.target.style.borderColor = '#000'}
+              onBlur={(e) => e.target.style.borderColor = '#e5e5e5'}
             />
           </div>
 
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium disabled:opacity-50"
+            style={{
+              width: '100%',
+              padding: '12px 16px',
+              background: loading ? '#e5e5e5' : '#000',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '10px',
+              fontSize: '15px',
+              fontWeight: '400',
+              cursor: loading ? 'not-allowed' : 'pointer',
+              transition: 'all 0.15s ease',
+              marginTop: '8px',
+            }}
+            onMouseEnter={(e) => {
+              if (!loading) e.currentTarget.style.background = '#333';
+            }}
+            onMouseLeave={(e) => {
+              if (!loading) e.currentTarget.style.background = '#000';
+            }}
           >
-            {loading ? 'Loading...' : isSignUp ? 'Create Account' : 'Sign In'}
+            {loading ? 'Loading...' : isSignUp ? 'Create account' : 'Sign in'}
           </button>
         </form>
 
-        <div className="mt-4 text-center text-sm text-gray-600">
+        <div style={{ marginTop: '20px', textAlign: 'center', fontSize: '14px', color: '#666' }}>
           {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
           <button
             onClick={() => {
               setIsSignUp(!isSignUp);
               setError('');
             }}
-            className="text-blue-600 hover:text-blue-700 font-medium"
+            style={{
+              color: '#000',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              fontWeight: '400',
+              textDecoration: 'underline',
+            }}
           >
-            {isSignUp ? 'Sign In' : 'Sign Up'}
+            {isSignUp ? 'Sign in' : 'Sign up'}
           </button>
         </div>
       </div>

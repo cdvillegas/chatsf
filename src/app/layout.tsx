@@ -2,10 +2,9 @@ import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
 import "mapbox-gl/dist/mapbox-gl.css";
-import SessionProvider from "@/components/Auth/SessionProvider";
-import Navbar from "@/components/Auth/Navbar";
 import GoogleAnalytics from "@/components/GoogleAnalytics";
 import ErrorBoundary from "@/components/ErrorBoundary";
+import ClientLayout from "@/components/ClientLayout";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -13,11 +12,11 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Rate My Neighborhood - SF",
-  description: "Discover and rate San Francisco neighborhoods with our interactive map and community reviews",
+  title: "ChatSF - Your AI Guide to San Francisco",
+  description: "Ask anything about San Francisco neighborhoods, crime data, and city insights. Powered by AI with beautiful interactive maps.",
   openGraph: {
-    title: "Rate My Neighborhood - SF",
-    description: "Discover and rate San Francisco neighborhoods with our interactive map and community reviews",
+    title: "ChatSF - Your AI Guide to San Francisco",
+    description: "Ask anything about San Francisco neighborhoods, crime data, and city insights. Powered by AI with beautiful interactive maps.",
     type: "website",
   },
 };
@@ -32,10 +31,9 @@ export default function RootLayout({
       <body className={`${inter.variable} font-sans antialiased`}>
         <GoogleAnalytics />
         <ErrorBoundary>
-          <SessionProvider>
-            <Navbar />
+          <ClientLayout>
             {children}
-          </SessionProvider>
+          </ClientLayout>
         </ErrorBoundary>
       </body>
     </html>
