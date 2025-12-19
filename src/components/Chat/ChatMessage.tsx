@@ -70,9 +70,24 @@ export default function ChatMessage({ message, isSelected, onSelect }: ChatMessa
             }}
           >
             <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-              {content}
+              {message.content}
             </div>
           </div>
+          
+          {/* Visualization indicator */}
+          {hasVisualization && (
+            <div style={{
+              marginTop: '8px',
+              fontSize: '12px',
+              color: 'var(--text-secondary)',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px',
+              fontWeight: 500,
+            }}>
+              📊 {getVizLabel(message.visualization.type)}
+            </div>
+          )}
         </div>
       </div>
 
