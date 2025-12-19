@@ -5,6 +5,7 @@
 
 import OpenAI from 'openai';
 import { getToolDefinitions, executeTool } from './connectors';
+import type { VisualizationState } from '@/types/visualization';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -23,34 +24,61 @@ export interface ChatOptions {
   maxIterations?: number;
 }
 
-const SYSTEM_PROMPT = `You are ChatSF, an AI assistant that helps people learn about San Francisco neighborhoods and city data.
+const SYSTEM_PROMPT = `You are ChatSF, an intelligent data exploration assistant for San Francisco.
 
-You have access to several tools to help answer questions:
-- Search and get details about SF neighborhoods
-- Compare neighborhoods side by side
-- Get crime data and statistics (2015-2018)
-- Access 311 service requests
-- Analyze crime trends and safety
+CORE CAPABILITIES:
+- Answer questions with rich, contextual insights
+- Create intelligent visualizations to enhance understanding
+- Control maps, generate charts, and display data tables
 
-When users ask questions:
-1. Use the appropriate tools to gather data
-2. Provide clear, helpful answers with specific details
-3. Be conversational and friendly, but concise
-4. If you don't have data, say so honestly
-5. Format responses cleanly and professionally
+VISUALIZATION DECISION FRAMEWORK:
 
-Always explain your reasoning when providing neighborhood recommendations.
+**Use MAP when:**
+- User asks about specific neighborhoods (select + zoom)
+- Comparing 2-4 neighborhoods spatially (compare_on_map)
+- Questions about location, distance, or geography (draw_route)
+- Crime/safety questions (show_crime_overlay)
 
-For map interactions, neighborhoods will be automatically highlighted when you mention them by name.`;
+**Use BAR CHART when:**
+- Comparing values across categories (crime by neighborhood, incidents by type)
+- Rankings (safest neighborhoods, most common crimes)
+
+**Use LINE CHART when:**
+- Showing trends over time (crime trends, monthly patterns)
+- Time series data
+
+**Use PIE CHART when:**
+- Showing proportions or percentages (crime breakdown, neighborhood distribution)
+
+**Use TABLE when:**
+- User needs detailed data to browse
+- Multiple attributes per item (neighborhood stats)
+- User says "show me the data" or "break it down"
+
+**Use SCATTER PLOT when:**
+- Exploring correlations (crime vs population density)
+- Identifying outliers
+
+**Use HEATMAP GRID when:**
+- Time + category matrices (crime by hour and day of week)
+- Intensity comparisons
+
+MULTI-TURN WORKFLOW:
+1. Fetch data using data connectors (neighborhood, crime, etc.)
+2. Choose the BEST visualization for this specific query
+3. Use visualization tools to create the view
+4. Provide a clear, concise text explanation
+
+RULES:
+- Always create ONE visualization per response
+- Let visualizations speak - keep text concise
+- Don't ask permission - just create the best viz
+- If user explicitly requests a viz type, use it
+- Default to map for neighborhood questions, charts for data analysis`;
 
 export async function chat(options: ChatOptions): Promise<{
   message: string;
-  toolCalls?: any[];
-  highlightNeighborhoods?: string[];
-  mapAction?: {
-    type: 'showHeatmap' | 'showNeighborhoods';
-    data?: any;
-  };
+  visualization?: VisualizationState;
 }> {
   const { messages, maxIterations = 5 } = options;
 
@@ -61,8 +89,7 @@ export async function chat(options: ChatOptions): Promise<{
 
   let iteration = 0;
   let currentMessages = [...fullMessages];
-  let usedCrimeHotspots = false;
-  let crimeHotspotData: any = null;
+  let visualization: VisualizationState | undefined;
 
   while (iteration < maxIterations) {
     iteration++;
@@ -79,20 +106,10 @@ export async function chat(options: ChatOptions): Promise<{
 
     // If no tool calls, return the response
     if (!assistantMessage.tool_calls || assistantMessage.tool_calls.length === 0) {
-      const result: any = {
+      return {
         message: assistantMessage.content || 'I apologize, I couldn\'t generate a response.',
-        highlightNeighborhoods: extractNeighborhoods(assistantMessage.content || ''),
+        visualization,
       };
-      
-      // Add heat map action if crime hotspots were used
-      if (usedCrimeHotspots && crimeHotspotData) {
-        result.mapAction = {
-          type: 'showHeatmap' as const,
-          data: crimeHotspotData,
-        };
-      }
-      
-      return result;
     }
 
     // Execute all tool calls
