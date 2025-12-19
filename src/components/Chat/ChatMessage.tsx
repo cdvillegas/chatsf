@@ -30,7 +30,7 @@ export default function ChatMessage({ message, isSelected, onSelect }: ChatMessa
     <div
       onClick={() => hasVisualization && onSelect(message.id)}
       style={{
-        padding: '16px 20px',
+        padding: '16px 0',
         animation: 'fadeIn 0.3s ease-out',
         cursor: hasVisualization ? 'pointer' : 'default',
         background: isSelected ? 'var(--bg-tertiary)' : 'transparent',

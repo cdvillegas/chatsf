@@ -7,12 +7,16 @@ import { BaseConnector } from './base';
 import { NeighborhoodsConnector } from './neighborhoods';
 import { DataSFConnector } from './datasf';
 import { CrimeConnector } from './crime';
+import VisualizationConnector from './visualization';
+import MapControlConnector from './map';
 
 // Registry of all available connectors
 const connectors: BaseConnector[] = [
   new NeighborhoodsConnector(),
   new DataSFConnector(),
   new CrimeConnector(),
+  new VisualizationConnector(),
+  new MapControlConnector(),
 ];
 
 /**

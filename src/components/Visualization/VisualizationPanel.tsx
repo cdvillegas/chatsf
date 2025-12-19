@@ -11,13 +11,12 @@ import HeatmapGridView from './Charts/HeatmapGridView';
 
 interface VisualizationPanelProps {
   visualization: VisualizationState | null;
-  isChatVisible: boolean;
 }
 
-export default function VisualizationPanel({ visualization, isChatVisible }: VisualizationPanelProps) {
+export default function VisualizationPanel({ visualization }: VisualizationPanelProps) {
   // Default to map if no visualization
   if (!visualization) {
-    return <MapContainer isChatVisible={isChatVisible} />;
+    return <MapContainer />;
   }
 
   return (
@@ -28,16 +27,12 @@ export default function VisualizationPanel({ visualization, isChatVisible }: Vis
         height: '100%',
         position: 'relative',
         overflow: 'hidden',
+        transition: 'opacity 0.2s ease',
       }}
     >
       {visualization.type === 'map' && (
         <MapContainer 
           highlightedNeighborhoods={visualization.config.selectedNeighborhoods}
-          isChatVisible={isChatVisible}
-          mapAction={{
-            type: 'showNeighborhoods',
-            ...visualization.config
-          } as any}
         />
       )}
       

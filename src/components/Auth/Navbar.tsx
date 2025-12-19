@@ -23,52 +23,47 @@ export default function Navbar() {
         WebkitBackdropFilter: 'var(--backdrop-blur)',
         borderBottom: '1px solid var(--navbar-border)',
         transition: 'all 0.3s ease',
+        display: 'flex',
+        justifyContent: 'space-between',
+        alignItems: 'center',
+        height: '64px',
+        padding: '0 24px',
       }}
     >
-      <div style={{
-        maxWidth: '1280px',
-        margin: '0 auto',
-        padding: '0 24px',
-      }}>
-        <div style={{
+      <Link 
+        href="/" 
+        style={{
           display: 'flex',
-          justifyContent: 'space-between',
           alignItems: 'center',
-          height: '64px',
+          gap: '4px',
+          textDecoration: 'none',
+        }}
+      >
+        <img 
+          src={theme === 'dark' ? '/logo-dark.png' : '/logo-light.png'}
+          alt="ChatSF"
+          style={{
+            width: '32px',
+            height: '32px',
+            objectFit: 'contain',
+            transition: 'opacity 0.3s ease',
+          }}
+        />
+        <span style={{
+          fontSize: '18px',
+          fontWeight: 500,
+          color: 'var(--text-primary)',
+          letterSpacing: '-0.01em',
         }}>
-          <Link 
-            href="/" 
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              textDecoration: 'none',
-            }}
-          >
-            <img 
-              src={theme === 'dark' ? '/chatsf-white.png' : '/chatsf-black.png'}
-              alt="ChatSF"
-              style={{
-                width: '28px',
-                height: '28px',
-                objectFit: 'contain',
-              }}
-            />
-            <span style={{
-              fontSize: '18px',
-              fontWeight: 500,
-              color: 'var(--text-primary)',
-              letterSpacing: '-0.01em',
-            }}>
-              ChatSF
-            </span>
-          </Link>
+          ChatSF
+        </span>
+      </Link>
 
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '12px',
-          }}>
+      <div style={{
+        display: 'flex',
+        alignItems: 'center',
+        gap: '20px',
+      }}>
             {/* Dark Mode Toggle */}
             <button
               onClick={toggleTheme}
@@ -83,12 +78,34 @@ export default function Navbar() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                fontSize: '18px',
-                transition: 'all 0.15s ease',
+                position: 'relative',
               }}
               title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
             >
-              {theme === 'dark' ? '☀️' : '🌙'}
+              <img
+                src="/sun-icon.png"
+                alt="Sun"
+                style={{
+                  width: '20px',
+                  height: '20px',
+                  objectFit: 'contain',
+                  position: 'absolute',
+                  opacity: theme === 'dark' ? 1 : 0,
+                  transition: 'opacity 0.3s ease',
+                }}
+              />
+              <img
+                src="/moon-icon.png"
+                alt="Moon"
+                style={{
+                  width: '20px',
+                  height: '20px',
+                  objectFit: 'contain',
+                  position: 'absolute',
+                  opacity: theme === 'dark' ? 0 : 1,
+                  transition: 'opacity 0.3s ease',
+                }}
+              />
             </button>
 
             {status === 'loading' ? (
@@ -103,8 +120,6 @@ export default function Navbar() {
             ) : (
               <SignInButton />
             )}
-          </div>
-        </div>
       </div>
     </nav>
   );

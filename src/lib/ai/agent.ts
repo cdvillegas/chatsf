@@ -123,8 +123,12 @@ export async function chat(options: ChatOptions): Promise<{
       const toolName = toolCall.function.name;
       const toolParams = JSON.parse(toolCall.function.arguments);
 
+      console.log(`🔧 Tool called: ${toolName}`, toolParams);
+
       try {
         const result = await executeTool(toolName, toolParams);
+        
+        console.log(`✅ Tool result for ${toolName}:`, typeof result, result ? JSON.stringify(result).substring(0, 200) : 'null');
         
         // Track visualization tool calls (render_* and map control tools)
         if (toolName.startsWith('render_') || 
@@ -132,8 +136,9 @@ export async function chat(options: ChatOptions): Promise<{
           try {
             // Parse the visualization state from the tool result
             visualization = JSON.parse(result);
+            console.log(`📊 Visualization set:`, visualization.type);
           } catch (e) {
-            console.error('Failed to parse visualization:', e);
+            console.error('Failed to parse visualization:', e, 'Result was:', result);
           }
         }
         
@@ -143,6 +148,7 @@ export async function chat(options: ChatOptions): Promise<{
           tool_call_id: toolCall.id,
         } as any);
       } catch (error) {
+        console.error(`❌ Tool error for ${toolName}:`, error);
         currentMessages.push({
           role: 'tool' as any,
           content: JSON.stringify({ error: String(error) }),

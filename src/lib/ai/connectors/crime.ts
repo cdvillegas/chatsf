@@ -155,6 +155,8 @@ export class CrimeConnector extends BaseConnector {
           }
         });
 
+        console.log(`📊 Found ${neighborhoods.length} neighborhoods, ${neighborhoods.filter(h => h.crimeStats).length} with crime stats`);
+
         // Filter and sort
         const withStats = neighborhoods
           .filter(h => h.crimeStats)
@@ -176,6 +178,8 @@ export class CrimeConnector extends BaseConnector {
           })
           .sort((a, b) => a.incidents - b.incidents)
           .slice(0, limit);
+
+        console.log(`✅ Returning ${withStats.length} neighborhoods with stats`);
 
         return {
           crimeType,

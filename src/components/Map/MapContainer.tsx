@@ -7,7 +7,6 @@ import { useTheme } from '@/contexts/ThemeContext';
 interface MapContainerProps {
   highlightedNeighborhoods?: string[];
   onNeighborhoodSelect?: (slug: string | null) => void;
-  isChatVisible?: boolean;
   mapAction?: {
     type: 'showHeatmap' | 'showNeighborhoods';
     data?: any;
@@ -17,7 +16,6 @@ interface MapContainerProps {
 export default function MapContainer({ 
   highlightedNeighborhoods = [],
   onNeighborhoodSelect,
-  isChatVisible = true,
   mapAction = null
 }: MapContainerProps) {
   const { theme } = useTheme();
@@ -190,7 +188,7 @@ export default function MapContainer({
           },
         });
 
-        // Labels with fade-in
+        // Labels with fade-in (hidden by default)
         map.current.addLayer({
           id: 'neighborhoods-labels',
           type: 'symbol',
@@ -207,6 +205,7 @@ export default function MapContainer({
             ],
             'text-max-width': 10,
             'text-line-height': 1.2,
+            'visibility': 'none', // Hidden by default
           },
           paint: {
             'text-color': theme === 'dark' ? '#ffffff' : '#000000',
@@ -222,6 +221,24 @@ export default function MapContainer({
             ],
           },
         });
+
+        // Hide POI and place labels from base Mapbox style
+        const style = map.current.getStyle();
+        if (style && style.layers) {
+          style.layers.forEach((layer: any) => {
+            // Hide POI, place, and settlement labels but keep road/street names
+            if (layer.type === 'symbol' && layer.id.includes('label')) {
+              if (layer.id.includes('poi') || 
+                  layer.id.includes('place') || 
+                  layer.id.includes('settlement') ||
+                  layer.id.includes('airport') ||
+                  layer.id.includes('park') ||
+                  layer.id.includes('water')) {
+                map.current?.setLayoutProperty(layer.id, 'visibility', 'none');
+              }
+            }
+          });
+        }
 
         // Add crime heatmap source (initially empty)
         map.current.addSource('crime-points', {
@@ -550,9 +567,8 @@ export default function MapContainer({
         style={{
           position: 'absolute',
           top: '88px',
-          right: isChatVisible ? '504px' : '24px',
+          right: '504px',
           zIndex: 20,
-          transition: 'right 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         }}
       >
         <div className="card" style={{ padding: '6px' }}>

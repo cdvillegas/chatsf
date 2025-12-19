@@ -3,19 +3,10 @@
 import React, { useState, useRef, useEffect } from 'react';
 import ChatMessage from './ChatMessage';
 import ChatInput from './ChatInput';
-
-interface Message {
-  id: string;
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp: Date;
-}
+import type { Message, VisualizationState } from '@/types/visualization';
 
 interface ChatInterfaceProps {
-  onNeighborhoodsHighlight?: (neighborhoods: string[]) => void;
-  onMapAction?: (action: any) => void;
-  isVisible?: boolean;
-  onToggle?: () => void;
+  onVisualizationChange?: (viz: VisualizationState | null) => void;
 }
 
 const SUGGESTED_QUESTIONS = [
@@ -26,12 +17,10 @@ const SUGGESTED_QUESTIONS = [
 ];
 
 export default function ChatInterface({ 
-  onNeighborhoodsHighlight,
-  onMapAction,
-  isVisible = true,
-  onToggle 
+  onVisualizationChange,
 }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([]);
+  const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -79,23 +68,20 @@ export default function ChatInterface({
 
       const data = await response.json();
 
-      // Add assistant message
+      // Add assistant message with visualization
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
         content: data.message,
         timestamp: new Date(),
+        visualization: data.visualization,
       };
       setMessages(prev => [...prev, assistantMessage]);
 
-      // Highlight neighborhoods on map if provided
-      if (data.highlightNeighborhoods && data.highlightNeighborhoods.length > 0) {
-        onNeighborhoodsHighlight?.(data.highlightNeighborhoods);
-      }
-      
-      // Trigger map action if provided (e.g., show heat map)
-      if (data.mapAction) {
-        onMapAction?.(data.mapAction);
+      // Auto-select the new message if it has a visualization
+      if (data.visualization) {
+        setSelectedMessageId(assistantMessage.id);
+        onVisualizationChange?.(data.visualization);
       }
     } catch (error) {
       console.error('Chat error:', error);
@@ -115,12 +101,21 @@ export default function ChatInterface({
     handleSend(question);
   };
 
+  // Handle message selection
+  const handleMessageSelect = (messageId: string) => {
+    setSelectedMessageId(messageId);
+    const message = messages.find(m => m.id === messageId);
+    if (message?.visualization) {
+      onVisualizationChange?.(message.visualization);
+    }
+  };
+
   return (
     <div
       ref={chatContainerRef}
       style={{
         position: 'fixed',
-        right: isVisible ? '0' : '-480px',
+        right: '0',
         top: '64px',
         bottom: '0',
         width: '480px',
@@ -129,39 +124,9 @@ export default function ChatInterface({
         display: 'flex',
         flexDirection: 'column',
         zIndex: 40,
-        transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         borderLeft: '1px solid var(--border-primary)',
       }}
     >
-      {/* Header - Minimal */}
-      <div
-        style={{
-          padding: '16px 20px',
-          borderBottom: '1px solid var(--border-primary)',
-          background: 'var(--bg-primary)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'flex-end',
-        }}
-      >
-        <button
-          onClick={onToggle}
-          className="theme-toggle"
-          style={{
-            background: 'none',
-            border: 'none',
-            fontSize: '20px',
-            cursor: 'pointer',
-            color: 'var(--text-secondary)',
-            padding: '4px 8px',
-            borderRadius: '6px',
-            transition: 'all 0.2s ease',
-          }}
-        >
-          ✕
-        </button>
-      </div>
-
       {/* Messages */}
       <div
         style={{
@@ -222,9 +187,9 @@ export default function ChatInterface({
             {messages.map((message) => (
               <ChatMessage
                 key={message.id}
-                role={message.role}
-                content={message.content}
-                timestamp={message.timestamp}
+                message={message}
+                isSelected={selectedMessageId === message.id}
+                onSelect={handleMessageSelect}
               />
             ))}
             {isLoading && (
@@ -235,14 +200,14 @@ export default function ChatInterface({
                       width: '32px',
                       height: '32px',
                       borderRadius: '50%',
-                      background: 'var(--accent-green)',
+                      background: 'var(--text-primary)',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       flexShrink: 0,
-                      color: '#fff',
-                      fontSize: '16px',
-                      fontWeight: '500',
+                      color: 'var(--bg-primary)',
+                      fontSize: '14px',
+                      fontWeight: 600,
                     }}
                   >
                     C
