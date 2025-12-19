@@ -29,6 +29,7 @@ export default function Home() {
       {!isChatVisible && (
         <button
           onClick={() => setIsChatVisible(true)}
+          className="btn-primary"
           style={{
             position: 'fixed',
             right: '24px',
@@ -36,25 +37,20 @@ export default function Home() {
             width: '52px',
             height: '52px',
             borderRadius: '50%',
-            background: '#000',
-            border: 'none',
-            color: '#ffffff',
             fontSize: '20px',
-            cursor: 'pointer',
-            boxShadow: '0 2px 12px rgba(0, 0, 0, 0.2)',
+            boxShadow: 'var(--shadow-md)',
             zIndex: 45,
             transition: 'all 0.2s ease',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
+            padding: 0,
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.transform = 'scale(1.05)';
-            e.currentTarget.style.background = '#333';
           }}
           onMouseLeave={(e) => {
             e.currentTarget.style.transform = 'scale(1)';
-            e.currentTarget.style.background = '#000';
           }}
         >
           💬

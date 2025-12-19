@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import mapboxgl from 'mapbox-gl';
+import { useTheme } from '@/contexts/ThemeContext';
 
 interface MapContainerProps {
   highlightedNeighborhoods?: string[];
@@ -19,6 +20,7 @@ export default function MapContainer({
   isChatVisible = true,
   mapAction = null
 }: MapContainerProps) {
+  const { theme } = useTheme();
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
   const [hoveredNeighborhood, setHoveredNeighborhood] = useState<string | null>(null);
@@ -26,10 +28,13 @@ export default function MapContainer({
   const [visualizationMode, setVisualizationMode] = useState<'neighborhoods' | 'heatmap' | 'both'>('neighborhoods');
   const [crimeData, setCrimeData] = useState<any>(null);
   const [isLoadingCrime, setIsLoadingCrime] = useState(false);
+  const [mapLoaded, setMapLoaded] = useState(false);
 
   useEffect(() => {
     if (map.current) return;
     if (!mapContainer.current) return;
+
+    console.log('🗺️ Initializing map with theme:', theme);
 
     const token = process.env.NEXT_PUBLIC_MAPBOX_TOKEN;
     
@@ -40,15 +45,20 @@ export default function MapContainer({
 
     mapboxgl.accessToken = token;
 
+    const mapStyle = theme === 'dark' ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/light-v11';
+    console.log('🎨 Using map style:', mapStyle);
+
     map.current = new mapboxgl.Map({
       container: mapContainer.current,
-      style: 'mapbox://styles/mapbox/streets-v12',
+      style: mapStyle,
       center: [-122.4194, 37.7749],
       zoom: 12.5,
       pitch: 0,
       bearing: 0,
       attributionControl: false,
     });
+
+    console.log('✅ Map instance created');
 
     // Add attribution in bottom right
     map.current.addControl(new mapboxgl.AttributionControl({ compact: true }), 'bottom-right');
@@ -112,7 +122,7 @@ export default function MapContainer({
           generateId: true,
         });
 
-        // Fill layer with crime-rate coloring (green = safe, red = high crime)
+        // Fill layer with monochrome styling based on crime rates
         map.current.addLayer({
           id: 'neighborhoods-fill',
           type: 'fill',
@@ -125,40 +135,12 @@ export default function MapContainer({
                 'interpolate',
                 ['linear'],
                 ['get', 'crimeRate'],
-                0, '#00ff00',      // No crime = bright green
-                5000, '#7FFF00',   // Low = chartreuse
-                10000, '#FFFF00',  // Low-medium = yellow
-                15000, '#FFD700',  // Medium = gold
-                20000, '#FFA500',  // Medium-high = orange
-                25000, '#FF6347',  // High = tomato
-                30000, '#FF0000'   // Very high = red
+                0, 'rgba(0, 200, 100, 0.3)',     // Low crime = green tint
+                10000, 'rgba(255, 200, 0, 0.3)',  // Medium = yellow tint
+                20000, 'rgba(255, 100, 0, 0.3)',  // High = orange tint
+                30000, 'rgba(255, 0, 0, 0.3)'     // Very high = red tint
               ],
-              // Fallback to vibrant colors if no crime data
-              [
-                'match',
-                ['%', ['id'], 20],
-                0, '#FF6B9D',
-                1, '#4ECDC4',
-                2, '#FFD93D',
-                3, '#FF6F61',
-                4, '#6BCF7F',
-                5, '#95E1D3',
-                6, '#F38181',
-                7, '#AA96DA',
-                8, '#FCBAD3',
-                9, '#A8E6CF',
-                10, '#FFD54F',
-                11, '#81C784',
-                12, '#64B5F6',
-                13, '#FFB74D',
-                14, '#E57373',
-                15, '#BA68C8',
-                16, '#4DB6AC',
-                17, '#FF8A65',
-                18, '#9575CD',
-                19, '#AED581',
-                '#FF6B9D'
-              ]
+              'rgba(100, 100, 100, 0.15)' // Default gray for no data
             ],
             'fill-opacity': [
               'interpolate',
@@ -190,44 +172,20 @@ export default function MapContainer({
             'line-color': [
               'case',
               ['boolean', ['feature-state', 'hover'], false],
-              [
-                'match',
-                ['%', ['id'], 20],
-                0, '#FF5582',
-                1, '#3CCCC3',
-                2, '#FFDD57',
-                3, '#FF5C54',
-                4, '#5FD068',
-                5, '#85DDD0',
-                6, '#FF6F6C',
-                7, '#9D85CF',
-                8, '#FFADD0',
-                9, '#98EBC0',
-                10, '#FFDD3F',
-                11, '#71D77A',
-                12, '#54C5FF',
-                13, '#FFBB40',
-                14, '#FF6B6B',
-                15, '#C058D2',
-                16, '#3DC4B5',
-                17, '#FF9560',
-                18, '#8C6AD1',
-                19, '#ACE571',
-                '#FF5582'
-              ],
-              '#ffffff'
+              theme === 'dark' ? '#ffffff' : '#000000',  // White/Black on hover
+              theme === 'dark' ? 'rgba(180, 180, 180, 0.5)' : 'rgba(60, 60, 60, 0.6)'  // Lighter in dark mode, darker in light mode
             ],
             'line-width': [
               'case',
               ['boolean', ['feature-state', 'hover'], false],
               2.5,
-              1.5
+              1.2
             ],
             'line-opacity': [
               'case',
               ['boolean', ['feature-state', 'hover'], false],
-              0.9,
-              0.7
+              1.0,
+              0.8
             ],
           },
         });
@@ -251,10 +209,10 @@ export default function MapContainer({
             'text-line-height': 1.2,
           },
           paint: {
-            'text-color': '#1f2937',
-            'text-halo-color': '#ffffff',
-            'text-halo-width': 2,
-            'text-halo-blur': 1,
+            'text-color': theme === 'dark' ? '#ffffff' : '#000000',
+            'text-halo-color': theme === 'dark' ? '#000000' : '#ffffff',
+            'text-halo-width': theme === 'dark' ? 1.5 : 2,
+            'text-halo-blur': 0.5,
             'text-opacity': [
               'interpolate',
               ['linear'],
@@ -411,6 +369,7 @@ export default function MapContainer({
         });
 
         console.log('✨ Map ready!');
+        setMapLoaded(true);
       } catch (error) {
         console.error('❌ Error:', error);
       }
@@ -419,14 +378,16 @@ export default function MapContainer({
     return () => {
       if (map.current) {
         map.current.remove();
+        map.current = null;
       }
+      setMapLoaded(false);
     };
-  }, []);
+  }, [theme]);
 
 
   // Handle highlighted neighborhoods from AI chat
   useEffect(() => {
-    if (!map.current || !neighborhoodsData || highlightedNeighborhoods.length === 0) return;
+    if (!mapLoaded || !map.current || !neighborhoodsData || highlightedNeighborhoods.length === 0) return;
 
     console.log('🎯 Highlighting neighborhoods:', highlightedNeighborhoods);
 
@@ -467,7 +428,7 @@ export default function MapContainer({
       maxZoom: 13.5,
     });
 
-  }, [highlightedNeighborhoods, neighborhoodsData]);
+  }, [mapLoaded, highlightedNeighborhoods, neighborhoodsData]);
 
   // Load crime data
   const loadCrimeData = useCallback(async (neighborhood?: string, category?: string) => {
@@ -501,7 +462,7 @@ export default function MapContainer({
 
   // Toggle visualization mode
   useEffect(() => {
-    if (!map.current || !map.current.isStyleLoaded()) return;
+    if (!mapLoaded || !map.current) return;
     
     // Check if layers exist before trying to modify them
     if (!map.current.getLayer('neighborhoods-fill')) {
@@ -528,11 +489,11 @@ export default function MapContainer({
     if (crimeVisible && !crimeData) {
       loadCrimeData();
     }
-  }, [visualizationMode]);
+  }, [mapLoaded, visualizationMode, crimeData, loadCrimeData]);
 
   // Handle map actions from AI
   useEffect(() => {
-    if (!map.current || !mapAction || !map.current.isStyleLoaded()) return;
+    if (!mapLoaded || !map.current || !mapAction) return;
     
     if (mapAction.type === 'showHeatmap' && mapAction.data) {
       console.log('🎯 AI requested heat map visualization');
@@ -547,7 +508,7 @@ export default function MapContainer({
       // Switch to heat map or both view
       setVisualizationMode('both');
     }
-  }, [mapAction]);
+  }, [mapLoaded, mapAction]);
 
   return (
     <>
@@ -563,22 +524,18 @@ export default function MapContainer({
       {/* Hover tooltip */}
       {hoveredNeighborhood && (
         <div
+          className="card"
           style={{
             position: 'absolute',
             top: '88px',
             left: '24px',
-            background: '#fff',
-            borderRadius: '8px',
-            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
             padding: '10px 14px',
             zIndex: 10,
             pointerEvents: 'none',
-            border: '1px solid #e5e5e5',
           }}
         >
-          <p style={{ 
+          <p className="text-primary" style={{ 
             fontWeight: 500, 
-            color: '#000', 
             margin: 0,
             fontSize: '14px',
           }}>
@@ -598,15 +555,7 @@ export default function MapContainer({
           transition: 'right 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
         }}
       >
-        <div
-          style={{
-            background: '#fff',
-            borderRadius: '10px',
-            boxShadow: '0 1px 3px rgba(0, 0, 0, 0.1)',
-            padding: '6px',
-            border: '1px solid #e5e5e5',
-          }}
-        >
+        <div className="card" style={{ padding: '6px' }}>
           {(['neighborhoods', 'heatmap', 'both'] as const).map((mode) => (
             <button
               key={mode}
@@ -617,8 +566,8 @@ export default function MapContainer({
                 padding: '8px 14px',
                 fontSize: '13px',
                 fontWeight: visualizationMode === mode ? '500' : '400',
-                color: visualizationMode === mode ? '#000' : '#666',
-                background: visualizationMode === mode ? '#f0f0f0' : 'transparent',
+                color: visualizationMode === mode ? 'var(--text-primary)' : 'var(--text-secondary)',
+                background: visualizationMode === mode ? 'var(--bg-tertiary)' : 'transparent',
                 border: 'none',
                 borderRadius: '6px',
                 cursor: 'pointer',
@@ -628,7 +577,7 @@ export default function MapContainer({
               }}
               onMouseEnter={(e) => {
                 if (visualizationMode !== mode) {
-                  e.currentTarget.style.background = '#f9f9f9';
+                  e.currentTarget.style.background = 'var(--bg-secondary)';
                 }
               }}
               onMouseLeave={(e) => {

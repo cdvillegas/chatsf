@@ -41,16 +41,16 @@ export default function Navbar() {
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: '8px',
+              gap: '6px',
               textDecoration: 'none',
             }}
           >
             <img 
-              src="/chatsf-logo.png" 
+              src={theme === 'dark' ? '/chatsf-white.png' : '/chatsf-black.png'}
               alt="ChatSF"
               style={{
-                width: '20px',
-                height: '20px',
+                width: '28px',
+                height: '28px',
                 objectFit: 'contain',
               }}
             />
