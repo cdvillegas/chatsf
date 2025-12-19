@@ -126,15 +126,20 @@ export async function chat(options: ChatOptions): Promise<{
       try {
         const result = await executeTool(toolName, toolParams);
         
-        // Track if crime hotspots tool was used
-        if (toolName === 'get_crime_hotspots') {
-          usedCrimeHotspots = true;
-          crimeHotspotData = result.geoJson;
+        // Track visualization tool calls (render_* and map control tools)
+        if (toolName.startsWith('render_') || 
+            ['select_neighborhoods', 'zoom_to_area', 'compare_on_map', 'show_crime_overlay', 'draw_route', 'reset_map'].includes(toolName)) {
+          try {
+            // Parse the visualization state from the tool result
+            visualization = JSON.parse(result);
+          } catch (e) {
+            console.error('Failed to parse visualization:', e);
+          }
         }
         
         currentMessages.push({
           role: 'tool' as any,
-          content: JSON.stringify(result),
+          content: typeof result === 'string' ? result : JSON.stringify(result),
           tool_call_id: toolCall.id,
         } as any);
       } catch (error) {
@@ -150,29 +155,6 @@ export async function chat(options: ChatOptions): Promise<{
   // If we hit max iterations, return a fallback
   return {
     message: 'I needed to gather a lot of information. Let me summarize what I found...',
+    visualization,
   };
-}
-
-/**
- * Extract neighborhood names/slugs from AI response for map highlighting
- */
-function extractNeighborhoods(content: string): string[] {
-  const neighborhoods: string[] = [];
-  
-  // Common SF neighborhood patterns
-  const patterns = [
-    /\b(Mission|Marina|Castro|SOMA|SoMa|Nob Hill|Russian Hill|Pacific Heights|Haight|Sunset|Richmond|Presidio|Financial District|North Beach|Chinatown|Tenderloin|Hayes Valley|Potrero Hill|Dogpatch|Bernal Heights|Glen Park|Noe Valley|Twin Peaks|Excelsior|Bayview|Visitacion Valley)\b/gi,
-  ];
-
-  patterns.forEach(pattern => {
-    const matches = content.matchAll(pattern);
-    for (const match of matches) {
-      const hood = match[0].toLowerCase().replace(/\s+/g, '-');
-      if (!neighborhoods.includes(hood)) {
-        neighborhoods.push(hood);
-      }
-    }
-  });
-
-  return neighborhoods;
 }
