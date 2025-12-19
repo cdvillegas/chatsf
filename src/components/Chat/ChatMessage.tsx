@@ -1,21 +1,41 @@
 'use client';
 
 import React from 'react';
+import type { Message, VisualizationType } from '@/types/visualization';
 
 interface ChatMessageProps {
-  role: 'user' | 'assistant';
-  content: string;
-  timestamp?: Date;
+  message: Message;
+  isSelected: boolean;
+  onSelect: (messageId: string) => void;
 }
 
-export default function ChatMessage({ role, content, timestamp }: ChatMessageProps) {
-  const isUser = role === 'user';
+function getVizLabel(type: VisualizationType): string {
+  const labels = {
+    map: 'Map view',
+    bar: 'Bar chart',
+    line: 'Line chart',
+    pie: 'Pie chart',
+    scatter: 'Scatter plot',
+    table: 'Data table',
+    heatmapGrid: 'Heatmap'
+  };
+  return labels[type];
+}
+
+export default function ChatMessage({ message, isSelected, onSelect }: ChatMessageProps) {
+  const isUser = message.role === 'user';
+  const hasVisualization = !!message.visualization;
 
   return (
     <div
+      onClick={() => hasVisualization && onSelect(message.id)}
       style={{
-        padding: '16px 0',
+        padding: '16px 20px',
         animation: 'fadeIn 0.3s ease-out',
+        cursor: hasVisualization ? 'pointer' : 'default',
+        background: isSelected ? 'var(--bg-tertiary)' : 'transparent',
+        borderRadius: '8px',
+        transition: 'background 0.15s ease',
       }}
     >
       <div style={{ 
@@ -23,44 +43,23 @@ export default function ChatMessage({ role, content, timestamp }: ChatMessagePro
         gap: '12px',
         alignItems: 'flex-start',
       }}>
-        {!isUser && (
-          <div
-            style={{
-              width: '32px',
-              height: '32px',
-              borderRadius: '50%',
-              background: 'var(--accent-green)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-              color: '#fff',
-              fontSize: '16px',
-              fontWeight: '500',
-            }}
-          >
-            C
-          </div>
-        )}
-        {isUser && (
-          <div
-            style={{
-              width: '32px',
-              height: '32px',
-              borderRadius: '50%',
-              background: 'var(--button-primary)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              flexShrink: 0,
-              color: 'var(--bg-primary)',
-              fontSize: '12px',
-              fontWeight: '500',
-            }}
-          >
-            You
-          </div>
-        )}
+        <div
+          style={{
+            width: '32px',
+            height: '32px',
+            borderRadius: '50%',
+            background: isUser ? 'var(--button-primary)' : 'var(--text-primary)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+            color: 'var(--bg-primary)',
+            fontSize: '14px',
+            fontWeight: 600,
+          }}
+        >
+          {isUser ? 'U' : 'C'}
+        </div>
         <div style={{ flex: 1, paddingTop: '4px' }}>
           <div
             style={{
