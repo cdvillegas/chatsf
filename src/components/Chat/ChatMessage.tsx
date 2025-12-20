@@ -1,41 +1,23 @@
 'use client';
 
 import React from 'react';
-import type { Message, VisualizationType } from '@/types/visualization';
+import ReactMarkdown from 'react-markdown';
+import type { Message } from '@/types/visualization';
 
 interface ChatMessageProps {
   message: Message;
-  isSelected: boolean;
-  onSelect: (messageId: string) => void;
+  isLoading?: boolean;
 }
 
-function getVizLabel(type: VisualizationType): string {
-  const labels = {
-    map: 'Map view',
-    bar: 'Bar chart',
-    line: 'Line chart',
-    pie: 'Pie chart',
-    scatter: 'Scatter plot',
-    table: 'Data table',
-    heatmapGrid: 'Heatmap'
-  };
-  return labels[type];
-}
-
-export default function ChatMessage({ message, isSelected, onSelect }: ChatMessageProps) {
+export default function ChatMessage({ message, isLoading }: ChatMessageProps) {
   const isUser = message.role === 'user';
   const hasVisualization = !!message.visualization;
 
   return (
     <div
-      onClick={() => hasVisualization && onSelect(message.id)}
       style={{
         padding: '16px 0',
         animation: 'fadeIn 0.3s ease-out',
-        cursor: hasVisualization ? 'pointer' : 'default',
-        background: isSelected ? 'var(--bg-tertiary)' : 'transparent',
-        borderRadius: '8px',
-        transition: 'background 0.15s ease',
       }}
     >
       <div style={{ 
@@ -61,32 +43,80 @@ export default function ChatMessage({ message, isSelected, onSelect }: ChatMessa
           {isUser ? 'U' : 'C'}
         </div>
         <div style={{ flex: 1, paddingTop: '4px' }}>
-          <div
-            style={{
-              color: 'var(--text-primary)',
-              fontSize: '15px',
-              lineHeight: '1.6',
-              fontWeight: '400',
-            }}
-          >
-            <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
-              {message.content}
+          {isLoading && message.content === '' ? (
+            // Show loading dots while waiting for stream
+            <div style={{ paddingTop: '4px', display: 'flex', gap: '4px' }}>
+              <span className="loading-dot"></span>
+              <span className="loading-dot" style={{ animationDelay: '0.2s' }}></span>
+              <span className="loading-dot" style={{ animationDelay: '0.4s' }}></span>
             </div>
-          </div>
+          ) : (
+            <>
+              <div
+                className="chat-message-content"
+                style={{
+                  color: 'var(--text-primary)',
+                  fontSize: '15px',
+                  lineHeight: '1.6',
+                  fontWeight: '400',
+                }}
+              >
+                {isUser ? (
+                  <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+                    {message.content}
+                  </div>
+                ) : (
+                  <ReactMarkdown
+                    components={{
+                      p: ({children}) => <p style={{ margin: '0 0 12px 0' }}>{children}</p>,
+                      strong: ({children}) => <strong style={{ fontWeight: 600 }}>{children}</strong>,
+                      ol: ({children}) => <ol style={{ margin: '0 0 12px 0', paddingLeft: '24px', listStyleType: 'decimal' }}>{children}</ol>,
+                      ul: ({children}) => <ul style={{ margin: '0 0 12px 0', paddingLeft: '24px', listStyleType: 'disc' }}>{children}</ul>,
+                      li: ({children}) => <li style={{ marginBottom: '6px', display: 'list-item' }}>{children}</li>,
+                      code: ({children}) => (
+                        <code style={{
+                          background: 'var(--bg-secondary)',
+                          padding: '2px 6px',
+                          borderRadius: '4px',
+                          fontSize: '14px',
+                          fontFamily: 'monospace'
+                        }}>
+                          {children}
+                        </code>
+                      ),
+                      pre: ({children}) => (
+                        <pre style={{
+                          background: 'var(--bg-secondary)',
+                          padding: '12px',
+                          borderRadius: '6px',
+                          overflow: 'auto',
+                          margin: '0 0 12px 0'
+                        }}>
+                          {children}
+                        </pre>
+                      ),
+                    }}
+                  >
+                    {message.content}
+                  </ReactMarkdown>
+                )}
+              </div>
           
-          {/* Visualization indicator */}
-          {hasVisualization && (
-            <div style={{
-              marginTop: '8px',
-              fontSize: '12px',
-              color: 'var(--text-secondary)',
-              display: 'flex',
-              alignItems: 'center',
-              gap: '4px',
-              fontWeight: 500,
-            }}>
-              📊 {getVizLabel(message.visualization.type)}
-            </div>
+              {/* Visualization indicator - shows when neighborhood is selected */}
+              {hasVisualization && message.visualization.config.selectedNeighborhoods && message.visualization.config.selectedNeighborhoods.length > 0 && (
+                <div style={{
+                  marginTop: '8px',
+                  fontSize: '12px',
+                  color: 'var(--text-secondary)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  fontWeight: 500,
+                }}>
+                  📍 {message.visualization.config.selectedNeighborhoods.join(', ')}
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

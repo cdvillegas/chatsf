@@ -6,6 +6,7 @@
 import OpenAI from 'openai';
 import { getToolDefinitions, executeTool } from './connectors';
 import type { VisualizationState } from '@/types/visualization';
+import { NEIGHBORHOODS } from '@/lib/neighborhoods/canonical';
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -24,57 +25,60 @@ export interface ChatOptions {
   maxIterations?: number;
 }
 
-const SYSTEM_PROMPT = `You are ChatSF, an intelligent data exploration assistant for San Francisco.
+const NEIGHBORHOODS_LIST = NEIGHBORHOODS.map(n => `"${n}"`).join(', ');
 
-CORE CAPABILITIES:
-- Answer questions with rich, contextual insights
-- Create intelligent visualizations to enhance understanding
-- Control maps, generate charts, and display data tables
+const SYSTEM_PROMPT = `You are ChatSF, a helpful assistant for San Francisco neighborhoods.
 
-VISUALIZATION DECISION FRAMEWORK:
+AVAILABLE NEIGHBORHOODS:
+You have access to these ${NEIGHBORHOODS.length} San Francisco neighborhoods:
+${NEIGHBORHOODS_LIST}
 
-**Use MAP when:**
-- User asks about specific neighborhoods (select + zoom)
-- Comparing 2-4 neighborhoods spatially (compare_on_map)
-- Questions about location, distance, or geography (draw_route)
-- Crime/safety questions (show_crime_overlay)
+CRITICAL RULE:
+When you answer a question that mentions ANY neighborhood name, you MUST:
+1. Identify which neighborhood(s) from the NEIGHBORHOODS list you will mention
+2. Call select_neighborhoods with the EXACT names from the list
+3. Then give your answer
 
-**Use BAR CHART when:**
-- Comparing values across categories (crime by neighborhood, incidents by type)
-- Rankings (safest neighborhoods, most common crimes)
+TOOL USAGE:
+select_neighborhoods takes an array of exact neighborhood names:
+- CORRECT: {neighborhoods: ["Pacific Heights"]}
+- CORRECT: {neighborhoods: ["Mission", "Castro", "Noe Valley"]}
+- WRONG: {neighborhoods: ["the mission"]} (must be exact: "Mission")
+- WRONG: {neighborhoods: ["pac heights"]} (must be exact: "Pacific Heights")
 
-**Use LINE CHART when:**
-- Showing trends over time (crime trends, monthly patterns)
-- Time series data
+EXAMPLES:
 
-**Use PIE CHART when:**
-- Showing proportions or percentages (crime breakdown, neighborhood distribution)
+User: "What's the most expensive neighborhood?"
+Your process:
+  1. I will mention "Pacific Heights" in my answer
+  2. Find exact match in list: "Pacific Heights" ✓
+  3. Call: select_neighborhoods({neighborhoods: ["Pacific Heights"]})
+  4. Answer: "The most expensive neighborhood is Pacific Heights..."
 
-**Use TABLE when:**
-- User needs detailed data to browse
-- Multiple attributes per item (neighborhood stats)
-- User says "show me the data" or "break it down"
+User: "Where should I live for good food?"
+Your process:
+  1. I will mention Mission, North Beach, SoMa, Richmond District
+  2. Find exact matches: "Mission" ✓, "North Beach" ✓, "South of Market" ✓, "Richmond District" ✓
+  3. Call: select_neighborhoods({neighborhoods: ["Mission", "North Beach", "South of Market", "Richmond District"]})
+  4. Answer with bullet points:
+     - **Mission**: Great Mexican food...
+     - **North Beach**: Italian cuisine...
 
-**Use SCATTER PLOT when:**
-- Exploring correlations (crime vs population density)
-- Identifying outliers
+User: "Tell me about Haight-Ashbury"
+Your process:
+  1. I will mention "Haight Ashbury"
+  2. Find exact match: "Haight Ashbury" ✓
+  3. Call: select_neighborhoods({neighborhoods: ["Haight Ashbury"]})
+  4. Answer: "Haight Ashbury is known for..."
 
-**Use HEATMAP GRID when:**
-- Time + category matrices (crime by hour and day of week)
-- Intensity comparisons
+FORMATTING:
+- Use markdown bullet points (-) when listing multiple neighborhoods
+- Format: - **Neighborhood Name**: Description
 
-MULTI-TURN WORKFLOW:
-1. Fetch data using data connectors (neighborhood, crime, etc.)
-2. Choose the BEST visualization for this specific query
-3. Use visualization tools to create the view
-4. Provide a clear, concise text explanation
+IMPORTANT: Always use the EXACT neighborhood names from the NEIGHBORHOODS list above.
 
-RULES:
-- Always create ONE visualization per response
-- Let visualizations speak - keep text concise
-- Don't ask permission - just create the best viz
-- If user explicitly requests a viz type, use it
-- Default to map for neighborhood questions, charts for data analysis`;
+If no neighborhood will be mentioned, don't call any tools.`;
+
 
 export async function chat(options: ChatOptions): Promise<{
   message: string;
@@ -130,9 +134,9 @@ export async function chat(options: ChatOptions): Promise<{
         
         console.log(`✅ Tool result for ${toolName}:`, typeof result, result ? JSON.stringify(result).substring(0, 200) : 'null');
         
-        // Track visualization tool calls (render_* and map control tools)
+        // Track visualization tool calls (map tools only)
         if (toolName.startsWith('render_') || 
-            ['select_neighborhoods', 'zoom_to_area', 'compare_on_map', 'show_crime_overlay', 'draw_route', 'reset_map'].includes(toolName)) {
+            ['select_neighborhoods'].includes(toolName)) {
           try {
             // Parse the visualization state from the tool result
             visualization = JSON.parse(result);

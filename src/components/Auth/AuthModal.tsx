@@ -1,8 +1,9 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
+import { createPortal } from 'react-dom';
 
 interface AuthModalProps {
   onClose: () => void;
@@ -15,7 +16,17 @@ export default function AuthModal({ onClose }: AuthModalProps) {
   const [name, setName] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const router = useRouter();
+
+  useEffect(() => {
+    setMounted(true);
+    // Prevent body scroll when modal is open
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = 'unset';
+    };
+  }, []);
 
   const handleSocialSignIn = async (provider: string) => {
     setLoading(true);
@@ -93,7 +104,9 @@ export default function AuthModal({ onClose }: AuthModalProps) {
     }
   };
 
-  return (
+  if (!mounted) return null;
+
+  const modalContent = (
     <div 
       style={{
         position: 'fixed',
@@ -102,14 +115,13 @@ export default function AuthModal({ onClose }: AuthModalProps) {
         right: 0,
         bottom: 0,
         background: 'rgba(0, 0, 0, 0.6)',
-        backdropFilter: 'blur(12px)',
-        WebkitBackdropFilter: 'blur(12px)',
+        backdropFilter: 'blur(4px)',
+        WebkitBackdropFilter: 'blur(4px)',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
         padding: '20px',
-        zIndex: 100,
-        overflowY: 'auto',
+        zIndex: 9999,
       }}
       onClick={onClose}
     >
@@ -118,13 +130,12 @@ export default function AuthModal({ onClose }: AuthModalProps) {
         style={{
           background: '#fff',
           borderRadius: '16px',
-          maxWidth: '400px',
+          maxWidth: '420px',
           width: '100%',
           padding: '40px',
           position: 'relative',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.12)',
-          margin: '80px auto',
-          maxHeight: 'calc(100vh - 160px)',
+          boxShadow: '0 20px 60px rgba(0, 0, 0, 0.3)',
+          maxHeight: '90vh',
           overflowY: 'auto',
         }}
       >
@@ -440,4 +451,6 @@ export default function AuthModal({ onClose }: AuthModalProps) {
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }

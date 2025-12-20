@@ -20,7 +20,6 @@ export default function ChatInterface({
   onVisualizationChange,
 }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [selectedMessageId, setSelectedMessageId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [showSuggestions, setShowSuggestions] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -49,8 +48,18 @@ export default function ChatInterface({
     setMessages(prev => [...prev, userMessage]);
     setIsLoading(true);
 
+    // Create placeholder for assistant message with loading state
+    const assistantMessageId = (Date.now() + 1).toString();
+    const assistantMessage: Message = {
+      id: assistantMessageId,
+      role: 'assistant',
+      content: '', // Empty content means show loading dots
+      timestamp: new Date(),
+    };
+    setMessages(prev => [...prev, assistantMessage]);
+
     try {
-      // Call chat API
+      // Call chat API with streaming
       const response = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -66,32 +75,66 @@ export default function ChatInterface({
         throw new Error('Failed to get response');
       }
 
-      const data = await response.json();
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      let accumulatedContent = '';
+      let visualizationUpdated = false;
 
-      // Add assistant message with visualization
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: data.message,
-        timestamp: new Date(),
-        visualization: data.visualization,
-      };
-      setMessages(prev => [...prev, assistantMessage]);
+      if (reader) {
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
 
-      // Auto-select the new message if it has a visualization
-      if (data.visualization) {
-        setSelectedMessageId(assistantMessage.id);
-        onVisualizationChange?.(data.visualization);
+          const chunk = decoder.decode(value);
+          const lines = chunk.split('\n');
+
+          for (const line of lines) {
+            if (line.startsWith('data: ')) {
+              try {
+                const data = JSON.parse(line.slice(6));
+                
+                // Update visualization immediately when received
+                if (data.visualization && !visualizationUpdated) {
+                  setMessages(prev =>
+                    prev.map(m =>
+                      m.id === assistantMessageId
+                        ? { ...m, visualization: data.visualization }
+                        : m
+                    )
+                  );
+                  onVisualizationChange?.(data.visualization);
+                  visualizationUpdated = true;
+                }
+                
+                // Accumulate text content
+                if (data.content) {
+                  accumulatedContent += data.content;
+                  setMessages(prev =>
+                    prev.map(m =>
+                      m.id === assistantMessageId
+                        ? { ...m, content: accumulatedContent }
+                        : m
+                    )
+                  );
+                }
+              } catch (e) {
+                // Skip invalid JSON
+              }
+            }
+          }
+        }
       }
+
     } catch (error) {
       console.error('Chat error:', error);
-      const errorMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: 'Sorry, I encountered an error. Please try again.',
-        timestamp: new Date(),
-      };
-      setMessages(prev => [...prev, errorMessage]);
+      // Replace the loading message with error
+      setMessages(prev =>
+        prev.map(m =>
+          m.id === assistantMessageId
+            ? { ...m, content: 'Sorry, I encountered an error. Please try again.' }
+            : m
+        )
+      );
     } finally {
       setIsLoading(false);
     }
@@ -99,15 +142,6 @@ export default function ChatInterface({
 
   const handleSuggestionClick = (question: string) => {
     handleSend(question);
-  };
-
-  // Handle message selection
-  const handleMessageSelect = (messageId: string) => {
-    setSelectedMessageId(messageId);
-    const message = messages.find(m => m.id === messageId);
-    if (message?.visualization) {
-      onVisualizationChange?.(message.visualization);
-    }
   };
 
   return (
@@ -188,40 +222,9 @@ export default function ChatInterface({
               <ChatMessage
                 key={message.id}
                 message={message}
-                isSelected={selectedMessageId === message.id}
-                onSelect={handleMessageSelect}
+                isLoading={isLoading && message.content === ''}
               />
             ))}
-            {isLoading && (
-              <div style={{ padding: '16px 0' }}>
-                <div style={{ display: 'flex', gap: '12px', alignItems: 'flex-start' }}>
-                  <div
-                    style={{
-                      width: '32px',
-                      height: '32px',
-                      borderRadius: '50%',
-                      background: 'var(--text-primary)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      flexShrink: 0,
-                      color: 'var(--bg-primary)',
-                      fontSize: '14px',
-                      fontWeight: 600,
-                    }}
-                  >
-                    C
-                  </div>
-                  <div style={{ flex: 1, paddingTop: '8px' }}>
-                    <div style={{ display: 'flex', gap: '4px' }}>
-                      <span className="loading-dot"></span>
-                      <span className="loading-dot" style={{ animationDelay: '0.2s' }}></span>
-                      <span className="loading-dot" style={{ animationDelay: '0.4s' }}></span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            )}
             <div ref={messagesEndRef} />
           </>
         )}

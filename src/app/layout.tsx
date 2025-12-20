@@ -14,6 +14,10 @@ const inter = Inter({
 export const metadata: Metadata = {
   title: "ChatSF - Your AI Guide to San Francisco",
   description: "Ask anything about San Francisco neighborhoods, crime data, and city insights. Powered by AI with beautiful interactive maps.",
+  icons: {
+    icon: '/favicon.png',
+    apple: '/favicon.png',
+  },
   openGraph: {
     title: "ChatSF - Your AI Guide to San Francisco",
     description: "Ask anything about San Francisco neighborhoods, crime data, and city insights. Powered by AI with beautiful interactive maps.",
